@@ -1,27 +1,36 @@
 # ESP32-S2 Fan Control
 
+## Klasor Yapisi
+
+- `src/main.cpp`: Ana uygulama akisi, web arayuzu, Telegram komutlari ve fan kontrol mantigi.
+- `include/config/PinConfig.h`: ESP32 pin eslesmeleri.
+- `include/config/RelayConfig.h`: Role aktif/pasif cikis seviyesi.
+- `include/config/WiFiConfig.h`: Web portu, AP, varsayilan WiFi ve kurtarma hotspot ayarlari.
+- `include/config/TelegramConfig.h`: Telegram bot varsayilanlari ve polling sureleri.
+- `include/config/EnergyConfig.h`: Fan gucu, elektrik birim ucreti ve enerji kayit araliklari.
+- `include/config/TimeConfig.h`: NTP ve varsayilan otomatik calisma saatleri.
+
 Bu proje ESP32-S2 tabanli fan kontrol sistemi icindir.
 
 ## Ag Ayarlari
 
-- Ana Wi-Fi: `CEYLAN-ROBOT`
-- Sifre: `Mahfer123.`
-- Router uzerindeki sabit IP: `http://192.168.5.170`
+- Varsayilan/kurtarma Wi-Fi: `test`
+- Varsayilan/kurtarma sifre: `12345678`
 - Cihazin kendi AP agi: `FanControlAP`
 - AP sifresi: `fan12345`
 - AP panel adresi: `http://192.168.4.1`
 - mDNS adresi: `http://ceylan-robot.local`
 
-Cihaz `WIFI_AP_STA` modunda calisir. Yani kendi `FanControlAP` agini acik tutarken ayni anda `CEYLAN-ROBOT` agina baglanmayi dener. Router baglantisi koparsa AP paneli acik kalir ve cihaz 30 saniyede bir tekrar Wi-Fi baglantisi dener.
+Cihaz `WIFI_AP_STA` modunda calisir. Kendi `FanControlAP` agini acik tutarken kayitli Wi-Fi profillerine baglanmayi dener. Kayitli aglar yoksa veya ulasilamazsa telefon hotspotu icin `test / 12345678` agini son care olarak dener.
 
 ## Ozellikler
 
 - Web panelinden fan acma/kapatma
-- Otomatik calisma saatleri: 07:00-08:30 ve 16:00-17:30
+- Web panelinden ayarlanabilir otomatik calisma saatleri
 - Telegram komutlari
 - Enerji tuketimi ve maliyet hesabi
 - Wi-Fi tarama ve ayar sayfasi
-- Sabit yerel IP ve AP fallback
+- DHCP ile dinamik IP ve AP fallback
 
 ## Telegram Komutlari
 

@@ -7,15 +7,12 @@
 #include <ArduinoJson.h>
 #include <time.h>
 
-#define FAN_PIN 4
-#define LED_PIN 2
-#define WEB_PORT 80
-#define TELEGRAM_POLL_MS 10000
-#define TELEGRAM_HTTP_TIMEOUT_MS 3000
-#define WIFI_RETRY_MS 30000
-#define ENERGY_SAVE_MS 60000
-#define FAN_POWER_WATTS 150.0  // Fan güç tüketimi (Watt)
-#define ELECTRICITY_RATE 4.0  // Elektrik ücreti (TL/kWh)
+#include "config/EnergyConfig.h"
+#include "config/PinConfig.h"
+#include "config/RelayConfig.h"
+#include "config/TelegramConfig.h"
+#include "config/TimeConfig.h"
+#include "config/WiFiConfig.h"
 
 WebServer server(WEB_PORT);
 Preferences prefs;
@@ -23,19 +20,30 @@ WiFiClientSecure secureClient;
 
 String wifiSsid;
 String wifiPassword;
+String connectedWifiSsid;
 String wifiSsid2;      // İkinci WiFi profili
 String wifiPassword2;  // İkinci WiFi şifresi
 String telegramToken;
 String telegramChatId;
 String customIp;
-int timezoneOffset = 3;
+int timezoneOffset = DEFAULT_TIMEZONE_OFFSET;
 bool dstEnabled = false;
+int schedule1StartH = DEFAULT_SCHEDULE1_START_H;
+int schedule1StartM = DEFAULT_SCHEDULE1_START_M;
+int schedule1EndH = DEFAULT_SCHEDULE1_END_H;
+int schedule1EndM = DEFAULT_SCHEDULE1_END_M;
+int schedule2StartH = DEFAULT_SCHEDULE2_START_H;
+int schedule2StartM = DEFAULT_SCHEDULE2_START_M;
+int schedule2EndH = DEFAULT_SCHEDULE2_END_H;
+int schedule2EndM = DEFAULT_SCHEDULE2_END_M;
+bool schedule2Enabled = DEFAULT_SCHEDULE2_ENABLED;
 
 bool autoMode = true;
 bool fanState = false;
 unsigned long lastTelegramPoll = 0;
 unsigned long lastWifiRetry = 0;
 unsigned long lastEnergySave = 0;
+unsigned long lastFanRuntimeSave = 0;
 long telegramOffset = 0;
 
 // Enerji hesaplaması için değişkenler
@@ -44,21 +52,6 @@ unsigned long totalFanOnTimeMs = 0;  // Toplam açık kalma süresi (ms)
 float totalEnergyKwh = 0.0;  // Toplam tüketilen enerji (kWh)
 float totalCost = 0.0;  // Toplam maliyet (TL)
 String energyMonthKey;
-
-const char* defaultWifiSsid = "CEYLAN-ROBOT";
-const char* defaultWifiPassword = "Mahfer123.";
-const char* deviceHostname = "ceylan-robot";
-const char* defaultTelegramToken = "8846209399:AAH8z9siKOf8LKWubTKHuGHhXdovCSZeZnU";
-const char* defaultTelegramChatId = "8618416869";
-const char* botUsername = "faniyilikderBot";
-const char* apSsid = "FanControlAP";
-const char* apPassword = "fan12345";
-const char* ntpServer = "pool.ntp.org";
-IPAddress staticLocalIp(192, 168, 5, 170);
-IPAddress staticGateway(192, 168, 5, 1);
-IPAddress staticSubnet(255, 255, 255, 0);
-IPAddress staticDns1(8, 8, 8, 8);      // Google DNS
-IPAddress staticDns2(8, 8, 4, 4);      // Google DNS 2
 
 String htmlHeader(const String& title) {
   return String("<!DOCTYPE html><html lang=\"tr\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><meta http-equiv=\"refresh\" content=\"20\"><title>") + title + "</title><style>"
@@ -76,7 +69,7 @@ String htmlHeader(const String& title) {
     ".actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:11px 15px;border:none;border-radius:8px;color:#061015;text-decoration:none;font-weight:700;cursor:pointer}.button-primary{background:var(--blue)}.button-accent{background:var(--cyan)}.button-danger{background:var(--red);color:#fff}.button-success{background:var(--green)}"
     ".form-row{margin-bottom:14px}label{display:block;margin-bottom:6px;font-weight:700}input,select,textarea{width:100%;padding:12px;border-radius:8px;border:1px solid var(--line);background:#07151c;color:var(--text)}"
     "@media(max-width:860px){.grid,.hero{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.fanbox{height:190px}}@media(max-width:520px){.metrics{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}.actions .button{width:100%}}"
-    "</style></head><body><header><div class=\"topbar\"><div class=\"brand\"><h1>ESP32-S2 Fan Kontrol</h1><p>CEYLAN-ROBOT akilli fan paneli</p></div><div class=\"pill\">Yerel: 192.168.5.170</div></div></header><main>";
+    "</style></head><body><header><div class=\"topbar\"><div class=\"brand\"><h1>ESP32-S2 Fan Kontrol</h1><p>CEYLAN-ROBOT akilli fan paneli</p></div><div class=\"pill\">DHCP / ceylan-robot.local</div></div></header><main>";
 }
 
 String htmlFooter() {
@@ -99,7 +92,9 @@ bool isTimeInWindow(int h, int m, int startH, int startM, int endH, int endM) {
   int minutes = h * 60 + m;
   int start = startH * 60 + startM;
   int end = endH * 60 + endM;
-  return minutes >= start && minutes < end;
+  if (start == end) return false;
+  if (start < end) return minutes >= start && minutes < end;
+  return minutes >= start || minutes < end;
 }
 
 void updateEnergyConsumption();
@@ -134,6 +129,21 @@ String formatDuration(unsigned long ms) {
   return String(hours) + " sa " + String(minutes) + " dk " + String(seconds) + " sn";
 }
 
+String formatTimeValue(int h, int m) {
+  char buf[6];
+  snprintf(buf, sizeof(buf), "%02d:%02d", h, m);
+  return String(buf);
+}
+
+void parseTimeValue(const String& value, int& h, int& m) {
+  if (value.length() < 5 || value.charAt(2) != ':') return;
+  int parsedH = value.substring(0, 2).toInt();
+  int parsedM = value.substring(3, 5).toInt();
+  if (parsedH < 0 || parsedH > 23 || parsedM < 0 || parsedM > 59) return;
+  h = parsedH;
+  m = parsedM;
+}
+
 void saveEnergyStats() {
   prefs.putULong("fanTime", totalFanOnTimeMs);
   prefs.putFloat("energy", totalEnergyKwh);
@@ -163,16 +173,17 @@ void resetMonthlyEnergyIfNeeded() {
 
 void setFan(bool on) {
   if (fanState == on) {
-    digitalWrite(FAN_PIN, on ? HIGH : LOW);
+    digitalWrite(FAN_PIN, on ? RELAY_ON_LEVEL : RELAY_OFF_LEVEL);
     return;
   }
 
   fanState = on;
-  digitalWrite(FAN_PIN, on ? HIGH : LOW);
+  digitalWrite(FAN_PIN, on ? RELAY_ON_LEVEL : RELAY_OFF_LEVEL);
 
   // Enerji hesaplaması
   if (on) {
     fanOnTimeStart = millis();
+    lastFanRuntimeSave = millis();
   } else if (fanOnTimeStart > 0) {
     unsigned long onDuration = millis() - fanOnTimeStart;
     totalFanOnTimeMs += onDuration;
@@ -183,11 +194,17 @@ void setFan(bool on) {
 }
 
 void updateEnergyConsumption() {
-  resetMonthlyEnergyIfNeeded();
+  if (fanState && fanOnTimeStart > 0 && millis() - lastFanRuntimeSave > FAN_RUNTIME_SAVE_MS) {
+    unsigned long onDuration = millis() - fanOnTimeStart;
+    totalFanOnTimeMs += onDuration;
+    fanOnTimeStart = millis();
+    lastFanRuntimeSave = millis();
+    saveEnergyStats();
+  }
 
   float hours = getCurrentFanOnTimeMs() / 3600000.0;
-  totalEnergyKwh = (FAN_POWER_WATTS * hours) / 1000.0;
-  totalCost = totalEnergyKwh * ELECTRICITY_RATE;
+  totalEnergyKwh = (CONFIG_FAN_POWER_WATTS * hours) / 1000.0;
+  totalCost = totalEnergyKwh * CONFIG_ELECTRICITY_RATE;
 
   if (millis() - lastEnergySave > ENERGY_SAVE_MS) {
     lastEnergySave = millis();
@@ -204,21 +221,21 @@ void updateEnergyConsumption() {
 String getEnergyPage() {
   updateEnergyConsumption();
 
-  String page = htmlHeader("Aylik Enerji");
+  String page = htmlHeader("Toplam Enerji");
   page += "<section class=\"metrics\">";
-  page += "<div class=\"metric\"><span>Aylik Donem</span><strong>" + String(energyMonthKey.length() ? energyMonthKey : "Bekleniyor") + "</strong></div>";
-  page += "<div class=\"metric\"><span>Calisma Suresi</span><strong>" + formatDuration(getCurrentFanOnTimeMs()) + "</strong></div>";
-  page += "<div class=\"metric\"><span>Tuketim</span><strong>" + String(totalEnergyKwh, 4) + " kWh</strong></div>";
-  page += "<div class=\"metric\"><span>Maliyet</span><strong>" + String(totalCost, 2) + " TL</strong></div>";
+  page += "<div class=\"metric\"><span>Toplam Calisma</span><strong>" + formatDuration(getCurrentFanOnTimeMs()) + "</strong></div>";
+  page += "<div class=\"metric\"><span>Anlik Durum</span><strong>" + String(fanState ? "Fan acik" : "Fan kapali") + "</strong></div>";
+  page += "<div class=\"metric\"><span>Toplam Tuketim</span><strong>" + String(totalEnergyKwh, 4) + " kWh</strong></div>";
+  page += "<div class=\"metric\"><span>Toplam Maliyet</span><strong>" + String(totalCost, 2) + " TL</strong></div>";
   page += "</section>";
 
   page += "<section class=\"grid\">";
-  page += "<div class=\"card\"><h2>Aylik Enerji Takibi</h2>";
-  page += "<p class=\"status\"><strong>Fan gucu:</strong> " + String(FAN_POWER_WATTS, 0) + " Watt</p>";
-  page += "<p class=\"status\"><strong>Elektrik tarifi:</strong> " + String(ELECTRICITY_RATE, 2) + " TL/kWh</p>";
-  page += "<p class=\"status\"><strong>Hesap:</strong> kWh x 4 TL olarak aylik maliyet tutulur.</p>";
+  page += "<div class=\"card\"><h2>Toplam Enerji Takibi</h2>";
+  page += "<p class=\"status\"><strong>Fan gucu:</strong> " + String(CONFIG_FAN_POWER_WATTS, 0) + " Watt</p>";
+  page += "<p class=\"status\"><strong>Elektrik tarifi:</strong> " + String(CONFIG_ELECTRICITY_RATE, 2) + " TL/kWh</p>";
+  page += "<p class=\"status\"><strong>Hesap:</strong> Fan acik kaldigi toplam sure uzerinden kWh ve TL hesaplanir.</p>";
   page += "<p class=\"small\">Ay degistiginde saya� otomatik sifirlanir. Fan calisirken sure ve maliyet anlik guncellenir.</p>";
-  page += "<div class=\"actions\"><a class=\"button button-primary\" href=\"/\">Ana Sayfa</a><a class=\"button button-danger\" href=\"/energy/reset\">Bu Ayi Sifirla</a></div>";
+  page += "<div class=\"actions\"><a class=\"button button-primary\" href=\"/\">Ana Sayfa</a><a class=\"button button-danger\" href=\"/energy/reset/confirm\">Toplami Sifirla</a></div>";
   page += "</div>";
 
   page += "<div class=\"card hero\"><div class=\"fanbox\"><div class=\"fan " + String(fanState ? "on" : "off") + "\"><div class=\"hub\"></div></div></div>";
@@ -233,15 +250,24 @@ void saveSettings() {
   prefs.putString("pass", wifiPassword);
   prefs.putString("ssid2", wifiSsid2);
   prefs.putString("pass2", wifiPassword2);
-  prefs.putString("customIp", customIp);
-  prefs.putString("gateway", prefs.getString("gateway", "192.168.5.1"));
-  prefs.putString("subnet", prefs.getString("subnet", "255.255.255.0"));
-  prefs.putString("dns1", prefs.getString("dns1", "8.8.8.8"));
-  prefs.putString("dns2", prefs.getString("dns2", "8.8.4.4"));
+  prefs.putString("customIp", "");
+  prefs.putString("gateway", "");
+  prefs.putString("subnet", "");
+  prefs.putString("dns1", "");
+  prefs.putString("dns2", "");
   prefs.putString("token", telegramToken);
   prefs.putString("chatid", telegramChatId);
   prefs.putInt("tz", timezoneOffset);
   prefs.putBool("dst", dstEnabled);
+  prefs.putInt("s1sh", schedule1StartH);
+  prefs.putInt("s1sm", schedule1StartM);
+  prefs.putInt("s1eh", schedule1EndH);
+  prefs.putInt("s1em", schedule1EndM);
+  prefs.putInt("s2sh", schedule2StartH);
+  prefs.putInt("s2sm", schedule2StartM);
+  prefs.putInt("s2eh", schedule2EndH);
+  prefs.putInt("s2em", schedule2EndM);
+  prefs.putBool("s2en", schedule2Enabled);
   prefs.putULong("fanTime", totalFanOnTimeMs);
   prefs.putFloat("energy", totalEnergyKwh);
   prefs.putFloat("cost", totalCost);
@@ -251,110 +277,125 @@ void saveSettings() {
 void loadSettings() {
   wifiSsid = prefs.getString("ssid", defaultWifiSsid);
   wifiPassword = prefs.getString("pass", defaultWifiPassword);
+  if (wifiSsid == "CEYLAN-ROBOT" && wifiPassword == "Mahfer123.") {
+    wifiSsid = defaultWifiSsid;
+    wifiPassword = defaultWifiPassword;
+    prefs.putString("ssid", wifiSsid);
+    prefs.putString("pass", wifiPassword);
+  }
   wifiSsid2 = prefs.getString("ssid2", "");
   wifiPassword2 = prefs.getString("pass2", "");
   telegramToken = prefs.getString("token", defaultTelegramToken);
   telegramChatId = prefs.getString("chatid", defaultTelegramChatId);
-  customIp = prefs.getString("customIp", "");
-  timezoneOffset = prefs.getInt("tz", 3);
+  customIp = "";
+  timezoneOffset = prefs.getInt("tz", DEFAULT_TIMEZONE_OFFSET);
   dstEnabled = prefs.getBool("dst", false);
+  schedule1StartH = prefs.getInt("s1sh", DEFAULT_SCHEDULE1_START_H);
+  schedule1StartM = prefs.getInt("s1sm", DEFAULT_SCHEDULE1_START_M);
+  schedule1EndH = prefs.getInt("s1eh", DEFAULT_SCHEDULE1_END_H);
+  schedule1EndM = prefs.getInt("s1em", DEFAULT_SCHEDULE1_END_M);
+  schedule2StartH = prefs.getInt("s2sh", DEFAULT_SCHEDULE2_START_H);
+  schedule2StartM = prefs.getInt("s2sm", DEFAULT_SCHEDULE2_START_M);
+  schedule2EndH = prefs.getInt("s2eh", DEFAULT_SCHEDULE2_END_H);
+  schedule2EndM = prefs.getInt("s2em", DEFAULT_SCHEDULE2_END_M);
+  schedule2Enabled = prefs.getBool("s2en", DEFAULT_SCHEDULE2_ENABLED);
   telegramOffset = prefs.getLong("tgoffset", 0);
   totalFanOnTimeMs = prefs.getULong("fanTime", 0);
   totalEnergyKwh = prefs.getFloat("energy", 0.0);
   totalCost = prefs.getFloat("cost", 0.0);
   energyMonthKey = prefs.getString("energyMonth", "");
+  Serial.println("Kayitli WiFi 1: " + wifiSsid);
+  Serial.println("Kayitli WiFi 2: " + String(wifiSsid2.length() > 0 ? wifiSsid2 : "(bos)"));
 }
 
-void connectWiFi() {
-  if (wifiSsid.length() == 0) {
-    Serial.println("Wi-Fi bilgisi yok, AP modu başlatılıyor.");
-    return;
-  }
+void applyIpSettings() {
+  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
+  Serial.println("DHCP ile IP alinacak.");
+}
 
-  WiFi.mode(WIFI_AP_STA);
-  WiFi.setHostname(deviceHostname);
-  
-  // IP ayarlarını yükle
-  String ipStr = prefs.getString("customIp", "");
-  String gatewayStr = prefs.getString("gateway", "192.168.5.1");
-  String subnetStr = prefs.getString("subnet", "255.255.255.0");
-  String dns1Str = prefs.getString("dns1", "8.8.8.8");
-  String dns2Str = prefs.getString("dns2", "8.8.4.4");
-  
-  // String'ten IPAddress'e dönüştür
-  IPAddress customLocalIp;
-  IPAddress customGateway;
-  IPAddress customSubnet;
-  IPAddress customDns1;
-  IPAddress customDns2;
-  
-  if (ipStr.length() > 0) {
-    customLocalIp.fromString(ipStr);
-    customGateway.fromString(gatewayStr);
-    customSubnet.fromString(subnetStr);
-    customDns1.fromString(dns1Str);
-    customDns2.fromString(dns2Str);
-    
-    if (!WiFi.config(customLocalIp, customGateway, customSubnet, customDns1, customDns2)) {
-      Serial.println("Statik IP ayarlanamadi, DHCP deneniyor.");
-    } else {
-      Serial.println("Statik IP ayarlandi: " + ipStr);
-    }
-  } else {
-    Serial.println("DHCP ile IP alınacak (Statik IP ayarlanmamış).");
+String wifiStatusText(wl_status_t status) {
+  switch (status) {
+    case WL_IDLE_STATUS: return "IDLE";
+    case WL_NO_SSID_AVAIL: return "SSID bulunamadi";
+    case WL_SCAN_COMPLETED: return "Tarama tamamlandi";
+    case WL_CONNECTED: return "Bagli";
+    case WL_CONNECT_FAILED: return "Baglanti basarisiz";
+    case WL_CONNECTION_LOST: return "Baglanti koptu";
+    case WL_DISCONNECTED: return "Bagli degil";
+    default: return "Bilinmeyen durum: " + String((int)status);
   }
-  
+}
+
+bool connectToProfile(const String& ssid, const String& password, const String& label) {
+  if (ssid.length() == 0) return false;
+
   WiFi.disconnect(false);
-  delay(100);
-  WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
-  Serial.print("Wi-Fi baglaniyor (1. profil): ");
-  Serial.println(wifiSsid);
+  delay(200);
+  applyIpSettings();
+  WiFi.begin(ssid.c_str(), password.c_str());
+  Serial.print("Wi-Fi baglaniyor (");
+  Serial.print(label);
+  Serial.print("): ");
+  Serial.println(ssid);
 
   unsigned long start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
+  while (WiFi.status() != WL_CONNECTED && millis() - start < WIFI_CONNECT_TIMEOUT_MS) {
     delay(500);
     Serial.print('.');
   }
 
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println();
-    Serial.print("Baglandi. IP: ");
-    Serial.println(WiFi.localIP());
-    Serial.print("DNS: ");
-    Serial.print(WiFi.dnsIP(0));
-    Serial.print(" / ");
-    Serial.println(WiFi.dnsIP(1));
-  } else {
-    Serial.println();
-    
-    // İkinci WiFi profili varsa dene
-    if (wifiSsid2.length() > 0) {
-      Serial.println("1. profil basarisiz, 2. profili deniyor...");
-      WiFi.disconnect(false);
-      delay(100);
-      WiFi.begin(wifiSsid2.c_str(), wifiPassword2.c_str());
-      Serial.print("Wi-Fi baglaniyor (2. profil): ");
-      Serial.println(wifiSsid2);
-      
-      start = millis();
-      while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
-        delay(500);
-        Serial.print('.');
-      }
-      
-      if (WiFi.status() == WL_CONNECTED) {
-        Serial.println();
-        Serial.println("2. profil WiFi'ya baglandi!");
-        Serial.print("IP: ");
-        Serial.println(WiFi.localIP());
-      } else {
-        Serial.println();
-        Serial.println("Her iki WiFi de basarisiz, AP modu baslatilacak.");
-      }
-    } else {
-      Serial.println("2. profil WiFi tanimlanbmadi, AP modu baslatilacak.");
-    }
+  Serial.println();
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println(label + " basarisiz. Durum: " + wifiStatusText(WiFi.status()));
+    return false;
   }
+
+  connectedWifiSsid = ssid;
+  Serial.println(label + " baglandi.");
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.print("DNS: ");
+  Serial.print(WiFi.dnsIP(0));
+  Serial.print(" / ");
+  Serial.println(WiFi.dnsIP(1));
+  return true;
+}
+
+void connectWiFiFixed() {
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.setHostname(deviceHostname);
+  connectedWifiSsid = "";
+
+  bool hasPreferredWifi = wifiSsid.length() > 0 && wifiSsid != fallbackWifiSsid;
+  int attempts = hasPreferredWifi ? PREFERRED_WIFI_ATTEMPTS : 1;
+
+  for (int attempt = 1; attempt <= attempts; attempt++) {
+    if (attempts > 1) {
+      Serial.println("Kayitli WiFi denemesi " + String(attempt) + "/" + String(attempts));
+    }
+    if (connectToProfile(wifiSsid, wifiPassword, "1. profil")) return;
+    if (attempt < attempts) delay(3000);
+  }
+
+  if (wifiSsid2.length() > 0) {
+    Serial.println("1. profil basarisiz, 2. profili deniyor...");
+    if (connectToProfile(wifiSsid2, wifiPassword2, "2. profil")) return;
+  } else {
+    Serial.println("2. profil WiFi tanimlanmadi.");
+  }
+
+  if (wifiSsid != fallbackWifiSsid && wifiSsid2 != fallbackWifiSsid) {
+    Serial.println("Kayitli profiller basarisiz, test hotspot deneniyor...");
+    if (connectToProfile(fallbackWifiSsid, fallbackWifiPassword, "test hotspot")) return;
+  }
+
+  WiFi.disconnect(false);
+  connectedWifiSsid = "";
+  Serial.println("WiFi basarisiz, AP acik kalacak.");
+}
+
+void connectWiFi() {
+  connectWiFiFixed();
 }
 
 void startAccessPoint() {
@@ -376,13 +417,29 @@ void retryWiFiIfNeeded() {
   Serial.println("Wi-Fi bagli degil, tekrar deneniyor.");
   connectWiFi();
 }
+
+void retryPreferredWiFiIfNeeded() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (connectedWifiSsid != fallbackWifiSsid) return;
+  if (wifiSsid == fallbackWifiSsid && wifiSsid2.length() == 0) return;
+  if (millis() - lastWifiRetry < WIFI_RETRY_MS) return;
+
+  lastWifiRetry = millis();
+  Serial.println("Test hotspot uzerinde, kayitli WiFi tekrar deneniyor.");
+  connectWiFi();
+}
 String getScheduleStatus() {
-  return String("Sabah 07:00 - 08:30 ve öğleden sonra 16:00 - 17:30 arası otomatik çalışır.");
+  String status = "Otomatik: " + formatTimeValue(schedule1StartH, schedule1StartM) + " - " + formatTimeValue(schedule1EndH, schedule1EndM);
+  if (schedule2Enabled) {
+    status += " ve " + formatTimeValue(schedule2StartH, schedule2StartM) + " - " + formatTimeValue(schedule2EndH, schedule2EndM);
+  }
+  status += " arasi calisir.";
+  return status;
 }
 
 String getNetworkInfo() {
   if (WiFi.status() == WL_CONNECTED) {
-    return String("Wi-Fi bagli: ") + wifiSsid + " - Yerel IP: " + WiFi.localIP().toString() + " - AP IP: " + WiFi.softAPIP().toString();
+    return String("Wi-Fi bagli: ") + connectedWifiSsid + " - Yerel IP: " + WiFi.localIP().toString() + " - AP IP: " + WiFi.softAPIP().toString();
   }
   if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
     return String("AP modu etkin: ") + apSsid + " - AP IP: " + WiFi.softAPIP().toString() + " - Router baglantisi bekleniyor";
@@ -414,8 +471,8 @@ String getRootPage() {
   page += "<section class=\"metrics\">";
   page += "<div class=\"metric\"><span>Fan Durumu</span><strong>" + String(fanState ? "Acik" : "Kapali") + "</strong></div>";
   page += "<div class=\"metric\"><span>Calisma Modu</span><strong>" + String(autoMode ? "Otomatik" : "Manuel") + "</strong></div>";
-  page += "<div class=\"metric\"><span>Bu Ay Enerji</span><strong>" + String(totalEnergyKwh, 3) + " kWh</strong></div>";
-  page += "<div class=\"metric\"><span>Bu Ay Maliyet</span><strong>" + String(totalCost, 2) + " TL</strong></div>";
+  page += "<div class=\"metric\"><span>Toplam Enerji</span><strong>" + String(totalEnergyKwh, 3) + " kWh</strong></div>";
+  page += "<div class=\"metric\"><span>Toplam Maliyet</span><strong>" + String(totalCost, 2) + " TL</strong></div>";
   page += "</section>";
 
   page += "<section class=\"grid\">";
@@ -423,15 +480,15 @@ String getRootPage() {
   page += "<div><h2>Fan Simulasyonu</h2>";
   page += "<p class=\"pill\"><span class=\"dot " + String(fanState ? "on" : "") + "\"></span>" + String(fanState ? "Fan calisiyor" : "Fan beklemede") + "</p>";
   page += "<p class=\"status\"><strong>Saat:</strong> " + getTimeString() + "</p>";
-  page += "<p class=\"status\"><strong>Aylik sure:</strong> " + formatDuration(getCurrentFanOnTimeMs()) + "</p>";
-  page += "<p class=\"status\"><strong>Tarife:</strong> " + String(ELECTRICITY_RATE, 2) + " TL/kWh, fan gucu " + String(FAN_POWER_WATTS, 0) + " W</p>";
-  page += "<div class=\"actions\"><a class=\"button button-success\" href=\"/toggleFan?state=1\">Fan Ac</a><a class=\"button button-danger\" href=\"/toggleFan?state=0\">Fan Kapat</a><a class=\"button button-primary\" href=\"/autoMode\">Otomatik Mod</a></div>";
+  page += "<p class=\"status\"><strong>Toplam sure:</strong> " + formatDuration(getCurrentFanOnTimeMs()) + "</p>";
+  page += "<p class=\"status\"><strong>Tarife:</strong> " + String(CONFIG_ELECTRICITY_RATE, 2) + " TL/kWh, fan gucu " + String(CONFIG_FAN_POWER_WATTS, 0) + " W</p>";
+  page += "<div class=\"actions\"><a class=\"button button-success\" href=\"/toggleFan?state=1\">Fan Ac</a><a class=\"button button-danger\" href=\"/toggleFan?state=0\">Fan Kapat</a><a class=\"button button-primary\" href=\"/autoMode\">Otomatik Mod</a><a class=\"button button-danger\" href=\"/energy/reset/confirm\">Sayaci Sifirla</a></div>";
   page += "</div></div>";
 
   page += "<div class=\"card\"><h2>Baglanti ve Plan</h2>";
   page += "<p class=\"status\"><strong>Ag:</strong> " + getNetworkInfo() + "</p>";
   page += "<p class=\"status\"><strong>Yerel adres:</strong> http://ceylan-robot.local</p>";
-  page += "<p class=\"status\"><strong>Ay:</strong> " + String(energyMonthKey.length() ? energyMonthKey : "Senkron bekleniyor") + "</p>";
+  page += "<p class=\"status\"><strong>Program:</strong> " + getScheduleStatus() + "</p>";
   page += "<p class=\"small\">" + getScheduleStatus() + "</p>";
   page += "<div class=\"actions\"><a class=\"button button-accent\" href=\"/wifi\">Wi-Fi</a><a class=\"button button-primary\" href=\"/settings\">Telegram / Saat</a><a class=\"button button-success\" href=\"/energy\">Enerji</a></div>";
   page += "</div>";
@@ -455,14 +512,7 @@ String getWifiPage(const String& scanResults = "") {
   page += "<div class=\"form-row\"><label>WiFi Ağı Adı (SSID)</label><input type=\"text\" name=\"ssid2\" value=\"" + wifiSsid2 + "\" placeholder=\"İkinci WiFi (boş bırakabilirsiniz)\"></div>";
   page += "<div class=\"form-row\"><label>WiFi Şifresi</label><input type=\"password\" name=\"pass2\" value=\"" + wifiPassword2 + "\" placeholder=\"İkinci WiFi şifresi (boş bırakabilirsiniz)\"></div>";
   
-  // IP Ayarları
-  page += "<h3 style=\"margin-top:20px;color:#35d0e6;margin-bottom:10px;\">IP Ayarları (İsteğe Bağlı)</h3>";
-  page += "<p class=\"small\">Boş bırakırsanız DHCP ile otomatik IP alır.</p>";
-  page += "<div class=\"form-row\"><label>IP Adresi</label><input type=\"text\" name=\"ip\" value=\"" + customIp + "\" placeholder=\"192.168.5.170\"></div>";
-  page += "<div class=\"form-row\"><label>Gateway</label><input type=\"text\" name=\"gateway\" value=\"" + prefs.getString("gateway", "192.168.5.1") + "\" placeholder=\"192.168.5.1\"></div>";
-  page += "<div class=\"form-row\"><label>Subnet Mask</label><input type=\"text\" name=\"subnet\" value=\"" + prefs.getString("subnet", "255.255.255.0") + "\" placeholder=\"255.255.255.0\"></div>";
-  page += "<div class=\"form-row\"><label>DNS 1 (İsteğe Bağlı)</label><input type=\"text\" name=\"dns1\" value=\"" + prefs.getString("dns1", "8.8.8.8") + "\" placeholder=\"8.8.8.8\"></div>";
-  page += "<div class=\"form-row\"><label>DNS 2 (İsteğe Bağlı)</label><input type=\"text\" name=\"dns2\" value=\"" + prefs.getString("dns2", "8.8.4.4") + "\" placeholder=\"8.8.4.4\"></div>";
+  page += "<p class=\"small\">IP adresi router tarafindan DHCP ile otomatik alinir. Guncel IP Telegram /durum veya /wifi_info komutuyla gorulebilir.</p>";
   
   page += "<div class=\"form-row\"><button class=\"button button-success\" type=\"submit\">Kaydet ve Bağlan</button> ";
   page += "<a class=\"button button-accent\" href=\"/wifiScan\">Wi-Fi Ağlarını Tara</a></div>";
@@ -491,8 +541,13 @@ String getSettingsPage() {
   page += "<option value=\"3\"" + String(timezoneOffset == 3 ? " selected" : "") + ">Istanbul (UTC+3)</option>";
   page += "<option value=\"5\"" + String(timezoneOffset == 5 ? " selected" : "") + ">UTC+5</option>";
   page += "</select></div>";
-  page += "<div class=\"form-row\"><label>Ek IP Adresi</label><input type=\"text\" name=\"customIp\" value=\"" + customIp + "\"></div>";
   page += "<div class=\"form-row\"><label><input type=\"checkbox\" name=\"dst\"" + String(dstEnabled ? " checked" : "") + "> Yaz saati uygulaması</label></div>";
+  page += "<h2>Otomatik Fan Saatleri</h2>";
+  page += "<div class=\"form-row\"><label>1. Baslangic</label><input type=\"time\" name=\"s1start\" value=\"" + formatTimeValue(schedule1StartH, schedule1StartM) + "\"></div>";
+  page += "<div class=\"form-row\"><label>1. Bitis</label><input type=\"time\" name=\"s1end\" value=\"" + formatTimeValue(schedule1EndH, schedule1EndM) + "\"></div>";
+  page += "<div class=\"form-row\"><label><input type=\"checkbox\" name=\"s2enabled\"" + String(schedule2Enabled ? " checked" : "") + "> 2. zaman araligi aktif</label></div>";
+  page += "<div class=\"form-row\"><label>2. Baslangic</label><input type=\"time\" name=\"s2start\" value=\"" + formatTimeValue(schedule2StartH, schedule2StartM) + "\"></div>";
+  page += "<div class=\"form-row\"><label>2. Bitis</label><input type=\"time\" name=\"s2end\" value=\"" + formatTimeValue(schedule2EndH, schedule2EndM) + "\"></div>";
   page += "<button class=\"button button-success\" type=\"submit\">Kaydet</button>";
   page += "</form>";
   page += "<p class=\"small\">Telegram komutları: <strong>/fan_ac, /fan_kapat, /durum, /wifi_info, /help</strong></p>";
@@ -659,14 +714,14 @@ void handleTelegram() {
         Serial.println("    -> Fan kapatildi");
       } else if (text.equalsIgnoreCase("/durum") || text.equalsIgnoreCase("/status")) {
         updateEnergyConsumption();
-        String status = "Fan: " + String(fanState ? "Acik" : "Kapali") + "\nMod: " + String(autoMode ? "Otomatik" : "Manuel") + "\nSaat: " + getTimeString() + "\nAylik enerji: " + String(totalEnergyKwh, 3) + " kWh\nAylik maliyet: " + String(totalCost, 2) + " TL\nIP: " + WiFi.localIP().toString();
+        String status = "Fan: " + String(fanState ? "Acik" : "Kapali") + "\nMod: " + String(autoMode ? "Otomatik" : "Manuel") + "\nSaat: " + getTimeString() + "\nToplam sure: " + formatDuration(getCurrentFanOnTimeMs()) + "\nToplam enerji: " + String(totalEnergyKwh, 3) + " kWh\nToplam maliyet: " + String(totalCost, 2) + " TL\nProgram: " + getScheduleStatus() + "\nIP: " + WiFi.localIP().toString();
         sendTelegramMessage(status);
         Serial.println("    -> Durum gonderildi");
       } else if (text.equalsIgnoreCase("/start")) {
         sendTelegramMessage("Fan bot hazir. Komutlar: /durum, /fan_ac, /fan_kapat, /auto, /wifi_info");
         Serial.println("    -> Start mesaji gonderildi");
       } else if (text.equalsIgnoreCase("/wifi_info") || text.equalsIgnoreCase("/wifi_bilgi")) {
-        String info = "Wi-Fi SSID: " + wifiSsid + "\nWi-Fi sifre: " + wifiPassword;
+        String info = "Wi-Fi SSID: " + connectedWifiSsid + "\nIP: " + WiFi.localIP().toString() + "\nAP IP: " + WiFi.softAPIP().toString() + "\nMod: DHCP";
         sendTelegramMessage(info);
         Serial.println("    -> WiFi info gonderildi");
       } else if (text.equalsIgnoreCase("/auto")) {
@@ -694,7 +749,10 @@ void checkSchedule() {
   time_t localTime = nowUtc + offsetSeconds;
   struct tm tm;
   localtime_r(&localTime, &tm);
-  bool running = isTimeInWindow(tm.tm_hour, tm.tm_min, 7, 0, 8, 30) || isTimeInWindow(tm.tm_hour, tm.tm_min, 16, 0, 17, 30);
+  bool running = isTimeInWindow(tm.tm_hour, tm.tm_min, schedule1StartH, schedule1StartM, schedule1EndH, schedule1EndM);
+  if (schedule2Enabled) {
+    running = running || isTimeInWindow(tm.tm_hour, tm.tm_min, schedule2StartH, schedule2StartM, schedule2EndH, schedule2EndM);
+  }
   setFan(running);
 }
 
@@ -706,24 +764,29 @@ void handleWifiScan() { server.send(200, "text/html", getWifiPage(getScanResults
 
 void handleSettingsPage() { server.send(200, "text/html", getSettingsPage()); }
 
+String getTrimmedArg(const String& name) {
+  String value = server.arg(name);
+  value.trim();
+  return value;
+}
+
 void handleSaveWifi() {
   if (server.method() == HTTP_POST) {
-    wifiSsid = server.arg("ssid");
+    wifiSsid = getTrimmedArg("ssid");
     wifiPassword = server.arg("pass");
-    wifiSsid2 = server.arg("ssid2");
+    wifiSsid2 = getTrimmedArg("ssid2");
     wifiPassword2 = server.arg("pass2");
-    customIp = server.arg("ip");
+    customIp = "";
     
-    // IP ayarlarını kaydet
     prefs.putString("ssid", wifiSsid);
     prefs.putString("pass", wifiPassword);
     prefs.putString("ssid2", wifiSsid2);
     prefs.putString("pass2", wifiPassword2);
-    prefs.putString("customIp", customIp);
-    prefs.putString("gateway", server.arg("gateway"));
-    prefs.putString("subnet", server.arg("subnet"));
-    prefs.putString("dns1", server.arg("dns1"));
-    prefs.putString("dns2", server.arg("dns2"));
+    prefs.putString("customIp", "");
+    prefs.putString("gateway", "");
+    prefs.putString("subnet", "");
+    prefs.putString("dns1", "");
+    prefs.putString("dns2", "");
     
     saveSettings();
     server.send(200, "text/html", htmlHeader("Kaydedildi") + "<div class=\"card\"><h2>Wi-Fi ayarları kaydedildi.</h2><p>ESP yeniden bağlanıyor...</p><a class=\"button button-primary\" href=\"/\">Geri Dön</a></div>" + htmlFooter());
@@ -737,10 +800,16 @@ void handleSaveSettings() {
   if (server.method() == HTTP_POST) {
     telegramToken = server.arg("token");
     telegramChatId = server.arg("chatid");
-    customIp = server.arg("customIp");
+    customIp = "";
     timezoneOffset = server.arg("tz").toInt();
     dstEnabled = server.hasArg("dst");
+    parseTimeValue(server.arg("s1start"), schedule1StartH, schedule1StartM);
+    parseTimeValue(server.arg("s1end"), schedule1EndH, schedule1EndM);
+    parseTimeValue(server.arg("s2start"), schedule2StartH, schedule2StartM);
+    parseTimeValue(server.arg("s2end"), schedule2EndH, schedule2EndM);
+    schedule2Enabled = server.hasArg("s2enabled");
     saveSettings();
+    Serial.println("Genel ayarlar kaydedildi.");
     server.send(200, "text/html", htmlHeader("Kaydedildi") + "<div class=\"card\"><h2>Ayarlar kaydedildi.</h2><p>Telegram bot ve zaman dilimi güncellendi.</p><a class=\"button button-primary\" href=\"/\">Geri Dön</a></div>" + htmlFooter());
     return;
   }
@@ -767,6 +836,19 @@ void handleAutoMode() {
 
 void handleEnergyPage() { server.send(200, "text/html", getEnergyPage()); }
 
+void handleEnergyResetConfirm() {
+  String page = htmlHeader("Sayac Sifirla");
+  page += "<div class=\"card\"><h2>Enerji sayaci sifirlansin mi?</h2>";
+  page += "<p class=\"status\"><strong>Toplam sure:</strong> " + formatDuration(getCurrentFanOnTimeMs()) + "</p>";
+  page += "<p class=\"status\"><strong>Toplam enerji:</strong> " + String(totalEnergyKwh, 4) + " kWh</p>";
+  page += "<p class=\"status\"><strong>Toplam maliyet:</strong> " + String(totalCost, 2) + " TL</p>";
+  page += "<p class=\"small\">Bu islem sadece enerji/sure sayacini sifirlar. Wi-Fi, Telegram ve saat ayarlarina dokunmaz.</p>";
+  page += "<div class=\"actions\"><a class=\"button button-danger\" href=\"/energy/reset\">Evet, Sifirla</a><a class=\"button button-primary\" href=\"/energy\">Vazgec</a></div>";
+  page += "</div>";
+  page += htmlFooter();
+  server.send(200, "text/html", page);
+}
+
 void handleEnergyReset() {
   totalFanOnTimeMs = 0;
   totalEnergyKwh = 0.0;
@@ -788,13 +870,14 @@ void setupServer() {
   server.on("/saveSettings", HTTP_POST, handleSaveSettings);
   server.on("/toggleFan", HTTP_GET, handleToggleFan);
   server.on("/autoMode", HTTP_GET, handleAutoMode);
+  server.on("/energy/reset/confirm", HTTP_GET, handleEnergyResetConfirm);
   server.on("/energy/reset", HTTP_GET, handleEnergyReset);
   server.onNotFound([](){ server.send(404, "text/plain", "Sayfa bulunamadı"); });
 }
 
 void setup() {
   pinMode(FAN_PIN, OUTPUT);
-  digitalWrite(FAN_PIN, LOW);
+  digitalWrite(FAN_PIN, RELAY_OFF_LEVEL);
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
   Serial.begin(115200);
@@ -843,12 +926,13 @@ void setup() {
   setupServer();
   server.begin();
   Serial.println("Web sunucu başlatıldı.");
-  Serial.println("Erisim: http://192.168.4.1 (AP) veya http://192.168.5.170 (CEYLAN-ROBOT)");
+  Serial.println("Erisim: http://192.168.4.1 (AP), http://ceylan-robot.local veya Telegram /wifi_info");
 }
 
 void loop() {
   server.handleClient();
   retryWiFiIfNeeded();
+  retryPreferredWiFiIfNeeded();
   updateEnergyConsumption();  // Enerji tüketimini sürekli güncelle
   if (WiFi.status() == WL_CONNECTED) {
     if (millis() - lastTelegramPoll > TELEGRAM_POLL_MS) {
