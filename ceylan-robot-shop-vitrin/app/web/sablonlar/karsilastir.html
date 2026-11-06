@@ -1,0 +1,134 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import ikon, guven_notu, yerel_bildirim with context %}
+{% block baslik %}{{ t('karsilastir.baslik') }}{% endblock %}
+{% block icerik %}
+{# G3e madde 23: uzun değer 140 karakterde kesilir, tamamı <details> içinde (JS'siz) #}
+{% macro hucre(d) -%}
+{%- if d | length > uzun_deger %}<details class="uzun-deger"><summary>{{ d[:uzun_deger] }}…</summary><span>{{ d }}</span></details>{% else %}{{ d }}{% endif -%}
+{%- endmacro %}
+{# G3c madde 24 / G3h madde 11: en fazla 5 ürün yan yana. Satırlar özellik, sütunlar ürün; ilk sütun (etiket) yatay
+   kaydırmada sabit. #}
+<section class="karsilastir">
+  <div class="karsilastir-ust">
+    <h1>{{ t('karsilastir.baslik') }}</h1>
+    {% if urunler %}
+    <p class="karsilastir-not">{{ t('karsilastir.not', azami=azami) }}</p>
+    <div class="karsilastir-eylemler">
+      <a class="dugme ikincil dugme-kucuk" href="/{{ dil }}/karsilastir.csv" download>{{ ikon('dosya', 'ikon-16') }}{{ t('karsilastir.csv') }}</a>
+      {#- G3n madde 15: Türkçe Excel için ondalık virgüllü sürüm (aynı rota, GET parametresi) #}
+      <a class="dugme ikincil dugme-kucuk" href="/{{ dil }}/karsilastir.csv?ondalik=virgul" download data-e2e="csv-virgul">{{ ikon('dosya', 'ikon-16') }}{{ t('karsilastir.csv_virgul') }}</a>
+      <form method="post" action="/{{ dil }}/karsilastir/temizle">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="sonraki" value="/{{ dil }}/karsilastir">
+        <button type="submit" class="dugme ikincil dugme-kucuk">{{ ikon('carpi', 'ikon-16') }}{{ t('karsilastir.temizle') }}</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if not urunler %}
+  <div class="bos-sonuc karsilastir-bos">
+    <p class="bos-baslik">{{ ikon('karsilastir', 'ikon-24') }}<strong>{{ t('karsilastir.bos') }}</strong></p>
+    <p>{{ t('karsilastir.bos_ipucu', azami=azami) }}</p>
+    <p><a class="dugme" href="/{{ dil }}/urunler">{{ t('katalog.tum_urunler') }}</a></p>
+  </div>
+  {% else %}
+  {#- G3h madde 12: "Tümü" / "Yalnız farklılıklar" iki bağlantı (JS'siz GET, Uygula yok) #}
+  <nav class="karsilastir-fark" aria-label="{{ t('karsilastir.gorunum') }}">
+    <a href="/{{ dil }}/karsilastir"{% if not fark %} aria-current="page"{% endif %}>{{ t('karsilastir.tumu') }}</a>
+    <a href="/{{ dil }}/karsilastir?fark=1"{% if fark %} aria-current="page"{% endif %}>{{ t('karsilastir.fark') }}</a>
+  </nav>
+  {#- G3m madde 13: yalnız bir üründe dolu (karşılaştırılamaz) teknik satırlar gizli; JS'siz GET bağlantısıyla gösterilir #}
+  {% if fark and tek_sayisi %}<p class="karsilastir-tek">{% if tek %}{{ t('karsilastir.tek_gosteriliyor', n=tek_sayisi) }} <a href="/{{ dil }}/karsilastir?fark=1">{{ t('karsilastir.tek_gizle') }}</a>{% else %}{{ t('karsilastir.tek_gizlendi', n=tek_sayisi) }} <a href="/{{ dil }}/karsilastir?fark=1&amp;tek=1">{{ t('karsilastir.tek_goster') }}</a>{% endif %}</p>{% endif %}
+  {#- G3g madde 18: dar ekranda iki ürün yan yana sığar; 3. ürün kaydırmayla #}
+  {% if urunler | length > 2 %}<p class="karsilastir-kaydir" aria-hidden="true">{{ t('karsilastir.kaydir') }}</p>{% endif %}
+  <div class="karsilastir-sar{% if urunler | length > 3 %} karsilastir-cok{% endif %}" role="region" aria-labelledby="karsilastir-baslik" tabindex="0">
+    <table class="karsilastir-tablo" data-e2e="karsilastir-tablo">
+      <caption id="karsilastir-baslik" class="gizli">{{ t('karsilastir.baslik') }}</caption>
+      <thead>
+        <tr>
+          <td class="karsilastir-kose"></td>
+          {% for u in urunler %}
+          {% set g_adres = gorsel_adresi(u) %}
+          <th scope="col" class="karsilastir-urun" id="urun-{{ u.id }}">
+            <img src="{{ g_adres }}" data-yedek="{{ yer_tutucu(u.kok_kategori_ad) }}" alt="" width="160" height="120" loading="lazy" decoding="async">
+            {% if yer_tutucu_mu(g_adres) %}<span class="temsili-gorsel">{{ t('urun.temsili_gorsel') }}</span>{% endif %}
+            <a href="/{{ dil }}/urun/{{ u.id }}">{{ urun_ad(u.id, u.ad) }}</a>
+            {#- G3m madde 12: aynı adlı ürünler parça no / stok koduyla ayırt edilir #}
+            {% if u.id in ayni_adli %}<span class="karsilastir-kod parca-no">{{ u.uretici_kodu or u.sku }}{% if u.uretici_kodu %} · {{ u.sku }}{% endif %}</span>{% endif %}
+            {{ yerel_bildirim(u.id) }}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for anahtar, degerler, sinif in metin_satirlari %}
+        <tr>
+          <th scope="row">{{ t(anahtar) }}</th>
+          {% for d in degerler %}<td{% if sinif %} class="{{ sinif }}"{% endif %}>{% if anahtar in ('karsilastir.fiyat_haric', 'karsilastir.fiyat_dahil') and urunler[loop.index0].fiyat_temsili and not urunler[loop.index0].teklif_zorunlu %}<span class="rozet rozet-temsili">{{ t('fiyat.temsili') }}</span> {% endif %}{{ hucre(d) }}{% set ik = fiyat_ikincil.get(anahtar) %}{% if ik and ik[loop.index0] %} <small class="fiyat-ikincil">≈ {{ ik[loop.index0] }}</small>{% endif %}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+        {% if guven_goster %}
+        <tr>
+          <th scope="row">{{ t('karsilastir.guven') }}</th>
+          {% for u in urunler %}<td>{{ guven_notu(u, 'kart-garanti') }}</td>{% endfor %}
+        </tr>
+        {% endif %}
+        {#- G3h madde 10: teknik bölüm özeti; verisi olmayan ürünün sütunu tek birleşik hücre #}
+        <tr class="karsilastir-ara"><th scope="rowgroup" colspan="{{ urunler | length + 1 }}">{{ t('urun.teknik_baslik') }} <span class="teknik-ozet">· {{ t('karsilastir.teknik_ozet', var=teknik_verili, toplam=urunler | length) }}</span></th></tr>
+        {% for etiket, degerler, tr_satir in teknik_satirlari %}
+        {%- set ilk = loop.first %}
+        <tr class="teknik-satir"{% if tr_satir %} lang="tr"{% endif %}>
+          <th scope="row">{{ etiket }}</th>
+          {% for d in degerler %}{% if veri_yok[loop.index0] %}{% if ilk %}<td rowspan="{{ teknik_satirlari | length }}" class="karsilastir-veri-yok" lang="{{ dil }}">{{ t('karsilastir.veri_yok') }}</td>{% endif %}{% else %}<td{% if d == '—' %} class="karsilastir-bos-hucre"{% endif %}>{{ hucre(d) }}</td>{% endif %}{% endfor %}
+        </tr>
+        {% endfor %}
+        {#- inceleme M-4: yalnız farklılıklarda verili ürünlerin tüm değerleri aynıysa veri yok sütunu yine görünür #}
+        {% if not teknik_satirlari and teknik_verili and teknik_verili < urunler | length %}
+        <tr class="teknik-satir">
+          <th scope="row">{{ t('urun.teknik_baslik') }}</th>
+          {% for u in urunler %}{% if veri_yok[loop.index0] %}<td class="karsilastir-veri-yok">{{ t('karsilastir.veri_yok') }}</td>{% else %}<td class="karsilastir-bos-hucre">{{ t('karsilastir.teknik_ayni') }}</td>{% endif %}{% endfor %}
+        </tr>
+        {% endif %}
+        {% if not teknik_verili %}
+        <tr class="teknik-satir">
+          <th scope="row">{{ t('urun.teknik_baslik') }}</th>
+          {% for u in urunler %}<td class="karsilastir-veri-yok">{{ t('karsilastir.veri_yok') }}</td>{% endfor %}
+        </tr>
+        {% endif %}
+        <tr class="karsilastir-eylem">
+          <th scope="row">{{ t('karsilastir.islem') }}</th>
+          {% for u in urunler %}
+          <td>
+            {% if u.teklif_zorunlu %}
+            <a class="dugme dugme-kucuk" href="/{{ dil }}/teklif?urun_id={{ u.id }}">{{ t('urun.teklif_iste') }}<span class="gizli">: {{ urun_ad(u.id, u.ad) }}</span></a>
+            {% else %}
+            <form method="post" action="/{{ dil }}/sepet/ekle">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <input type="hidden" name="urun_id" value="{{ u.id }}">
+              <input type="hidden" name="adet" value="1">
+              <input type="hidden" name="sonraki" value="/{{ dil }}/karsilastir">
+              <button class="dugme dugme-kucuk" type="submit">{{ ikon('sepet', 'ikon-16') }}<span>{{ t('katalog.sepete') }}</span><span class="gizli">: {{ urun_ad(u.id, u.ad) }}</span></button>
+            </form>
+            {% endif %}
+            <form method="post" action="/{{ dil }}/karsilastir/kaldir">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <input type="hidden" name="urun_id" value="{{ u.id }}">
+              <input type="hidden" name="sonraki" value="/{{ dil }}/karsilastir">
+              <button type="submit" class="kaldir-dugme">{{ ikon('carpi', 'ikon-16') }}<span>{{ t('karsilastir.cikar') }}</span><span class="gizli">: {{ urun_ad(u.id, u.ad) }}</span></button>
+            </form>
+          </td>
+          {% endfor %}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% if teknik_kirpildi %}<p class="alan-ipucu">{{ t('karsilastir.teknik_kirpildi') }}</p>{% endif %}
+  {% if teknik_satirlari %}<p class="alan-ipucu">{{ t('urun.teknik_kaynak') }}</p>{% endif %}
+  {#- G3g madde 11: /en'de çeviri notları (makine çevirisi; çevrilmemiş satırlar Türkçe) #}
+  {% if teknik_makine %}<p class="alan-ipucu" data-e2e="karsilastir-ceviri-notu">{{ t('urun.teknik_makine_cevirisi') }}</p>{% endif %}
+  {% if teknik_tr_var %}<p class="alan-ipucu" data-e2e="karsilastir-tr-notu">{{ t('karsilastir.teknik_tr_notu') }}</p>{% endif %}
+  {% if urunler | length < azami %}<p class="karsilastir-ekle-ipucu"><a href="/{{ dil }}/urunler">{{ t('karsilastir.daha_ekle', kalan=azami - urunler | length) }}</a></p>{% endif %}
+  {% endif %}
+</section>
+{% endblock %}

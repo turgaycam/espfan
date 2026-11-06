@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <!-- Ceylan Robot ikon seti (K22): 24 px ızgara, 1,5 px çizgi, currentColor.
+       Kullanım: <svg class="ikon" aria-hidden="true"><use href="/statik/ikonlar.svg#ad"></use></svg> -->
+  <symbol id="arama" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="10.5" cy="10.5" r="6.5"/>
+    <path d="M15.3 15.3 20.5 20.5"/>
+  </symbol>
+  <symbol id="sepet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2.5 3.5h2.4l2.3 11.1a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1l1.8-7.2H5.8"/>
+    <circle cx="9.5" cy="19.5" r="1.4"/>
+    <circle cx="17" cy="19.5" r="1.4"/>
+  </symbol>
+  <symbol id="kullanici" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="8" r="4"/>
+    <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>
+  </symbol>
+  <symbol id="telefon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5.2 3.5h3.3l1.6 4.2-2.1 1.4a11.5 11.5 0 0 0 6.9 6.9l1.4-2.1 4.2 1.6v3.3a2 2 0 0 1-2.2 2A16.8 16.8 0 0 1 3.2 5.7a2 2 0 0 1 2-2.2z"/>
+  </symbol>
+  <symbol id="kontrol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.75"/>
+    <path d="m8 12.3 2.8 2.8L16.2 9.6"/>
+  </symbol>
+  <symbol id="kalkan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2.8 19.5 5.6v5.6c0 4.7-3.1 8.5-7.5 10-4.4-1.5-7.5-5.3-7.5-10V5.6z"/>
+    <path d="m8.8 12 2.2 2.2 4.2-4.4"/>
+  </symbol>
+  <symbol id="kamyon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 17.5V6H2.5v11.5h1.6"/>
+    <path d="M14 9.5h3.9l3.6 4V17.5h-2"/>
+    <path d="M8.4 17.5h6.5"/>
+    <circle cx="6.2" cy="17.5" r="2"/>
+    <circle cx="17.2" cy="17.5" r="2"/>
+  </symbol>
+  <symbol id="dunya" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.75"/>
+    <path d="M3.25 12h17.5"/>
+    <path d="M12 3.25c2.4 2.4 3.6 5.3 3.6 8.75s-1.2 6.35-3.6 8.75c-2.4-2.4-3.6-5.3-3.6-8.75S9.6 5.65 12 3.25z"/>
+  </symbol>
+  <symbol id="dosya" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 2.75H7A1.75 1.75 0 0 0 5.25 4.5v15A1.75 1.75 0 0 0 7 21.25h10a1.75 1.75 0 0 0 1.75-1.75V7.5z"/>
+    <path d="M14 2.75V7.5h4.75"/>
+    <path d="M8.75 12.5h6.5M8.75 16h4.5"/>
+  </symbol>
+  <symbol id="filtre" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.5 4.75h17l-6.6 7.7v5.8l-3.8 1.9v-7.7z"/>
+  </symbol>
+  <symbol id="carpi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 6l12 12M18 6 6 18"/>
+  </symbol>
+  <symbol id="ok-sag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.5 12h15M13.5 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="uyari" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10.3 4.2a2 2 0 0 1 3.4 0l7.4 12.9a2 2 0 0 1-1.7 3H4.6a2 2 0 0 1-1.7-3z"/>
+    <path d="M12 9.5v4.25M12 16.75v.01"/>
+  </symbol>
+  <symbol id="bilgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.75"/>
+    <path d="M12 11v5.5M12 7.75v.01"/>
+  </symbol>
+  <symbol id="kopyala" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8.75" y="8.75" width="11.5" height="11.5" rx="1.75"/>
+    <path d="M15.25 8.75V5.5a1.75 1.75 0 0 0-1.75-1.75h-8A1.75 1.75 0 0 0 3.75 5.5v8a1.75 1.75 0 0 0 1.75 1.75h3.25"/>
+  </symbol>
+  <symbol id="karsilastir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3.5" y="4.5" width="7" height="15" rx="1"/>
+    <rect x="13.5" y="4.5" width="7" height="15" rx="1"/>
+    <path d="M6 9h2M6 12.5h2M16 9h2M16 12.5h2"/>
+  </symbol>
+</svg>

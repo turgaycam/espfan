@@ -1,0 +1,33 @@
+{% extends "taban.html" %}
+{% block baslik %}{{ t('teklif.detay_baslik', no=teklif.no) }}{% endblock %}
+{% block icerik %}
+{# G3g madde 26: teklif detayı (yalnız sahibi) #}
+<nav class="iz" aria-label="{{ t('katalog.iz') }}">
+  <ol>
+    <li><a href="/{{ dil }}/hesabim">{{ t('hesap.hesabim_baslik') }}</a></li>
+    <li><span aria-current="page">{{ teklif.no }}</span></li>
+  </ol>
+</nav>
+<section class="teklif teklif-detay">
+  <h1>{{ t('teklif.detay_baslik', no=teklif.no) }}</h1>
+  <p class="siparis-ust">{{ t('hesap.sutun_durum') }}: <strong class="rozet durum-rozeti teklif-{{ teklif.durum }}" data-e2e="teklif-durum">{{ t('teklif_durum.' ~ teklif.durum) }}</strong>{% if teklif.durum in ('yeni', 'inceleniyor') %} · <span class="teklif-yanit-suresi">{{ t('teklif.yanit_suresi') }}</span>{% endif %} · {{ tarih_tz(teklif.olusturma, teklif.ulke or 'TR') }}</p>
+  {#- G3l madde 11: onay sayfasındaki iletişim / vergi / PO / teslim adresi / parça kodu satırları #}
+  {% set iletisim_mesaj = false %}
+  {% include "_teklif_iletisim.html" %}
+  {% include "_teklif_ozeti.html" %}
+  {#- G3m madde 22: durum geçmişi mevcut alanlardan (oluşturma zamanı + şimdiki durum; ara durumların zamanı tutulmaz) #}
+  <section class="durum-gecmisi-bolum" aria-labelledby="teklif-gecmis-baslik">
+    <h2 id="teklif-gecmis-baslik">{{ t('hesap.durum_gecmisi') }}</h2>
+    <ol class="durum-gecmisi" data-e2e="teklif-gecmisi">
+      <li>{{ t('teklif.gecmis_olusturuldu') }} {{ tarih_tz(teklif.olusturma, teklif.ulke or 'TR') }}</li>
+      {%- if teklif.durum != 'yeni' %}
+      <li>{{ t('teklif.gecmis_' ~ teklif.durum) }}</li>{% endif %}
+    </ol>
+  </section>
+  <section class="teklif-mesaj" aria-labelledby="teklif-mesaj-baslik">
+    <h2 id="teklif-mesaj-baslik">{{ t('teklif.mesaj') }}</h2>
+    <p class="teklif-mesaj-metin">{{ teklif.mesaj }}</p>
+  </section>
+  <p><a href="/{{ dil }}/hesabim">{{ t('siparis.hesabim') }}</a></p>
+</section>
+{% endblock %}

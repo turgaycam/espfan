@@ -1,0 +1,14 @@
+# Temsili fiyat bantları — net EUR, KDV hariç. Anahtarlar normalize() edilmiş kök kategori adı.
+robot_kokleri:
+  - endustriyel robotlar
+  - pozisyonerler
+varsayilan: [50, 2000]
+bantlar:
+  endustriyel robotlar: [8000, 45000]
+  pozisyonerler: [5000, 30000]
+  robot kontrol uniteleri: [1500, 12000]
+  robotik parcalari: [80, 4000]
+  slider: [3000, 20000]
+  elektrik ve elektronik: [20, 1500]
+  mekanik: [15, 900]
+  abb reduktor: [400, 6000]

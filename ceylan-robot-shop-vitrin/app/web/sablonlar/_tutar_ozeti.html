@@ -1,0 +1,47 @@
+{# Sepet tutarı özeti. Değişkenler: tutar (SepetTutari), teslim; tahmini (sepet sayfası: tutar ödeme adımında kesinleşir).
+   G3e madde 5: navlunu teklifle olan yurt dışı (DAP) teslimde "Kargo 0,00" basılmaz; navlun satırı ve "Mal bedeli". #}
+{% set dap = teslim == 'yurtdisi_dap' %}
+{#- G3k madde 19: sepette ₺ gösterim + € tahsilat (yurt dışı): tüm satırlar ₺ (sabit kurla), toplamda ikincil € küçük #}
+{% set tl_kur = tl_gosterim_kur if tl_gosterim_kur is defined else none %}
+{% macro tg(x) %}{% if tl_kur %}{{ para(x * tl_kur, 'TRY') }}{% else %}{{ para(x, tutar.para_birimi) }}{% endif %}{% endmacro %}
+<dl class="tutar-ozeti">
+  {#- G3i madde 1: tek "Ara toplam (KDV hariç)" satırı. Gösterim para birimi tahsilattan farklıysa (G3g madde 7: kurumsal
+     € gösterim, ₺ tahsilat; ya da seçilen gösterim) önce satırlarla aynı birim, yanında "≈" tahsilat tutarı. #}
+  {% set ag = ara_gosterim if ara_gosterim is defined else none %}
+  {% if ag %}
+  <dt data-e2e="satir-eur-ara-toplam">{{ t('tutar.ara_toplam') }}</dt><dd class="tutar">{{ para(ag.tutar, ag.para) }} · ≈ {{ para(tutar.ara_toplam, tutar.para_birimi) }}</dd>
+  {% else %}
+  <dt>{{ t('tutar.ara_toplam') }}</dt><dd class="tutar">{{ para(tutar.ara_toplam, tutar.para_birimi) }}</dd>
+  {% endif %}
+  {% if dap %}
+  <dt data-e2e="satir-navlun">{{ t('tutar.navlun_teklif') }}</dt><dd>—</dd>
+  {% else %}
+  <dt>{{ t('tutar.kargo') }}</dt><dd class="tutar">{{ tg(tutar.kargo_net) }}</dd>
+  {% endif %}
+  {% if tutar.ihracat_istisnasi %}
+  <dt data-e2e="satir-ihracat">{{ t('tutar.ihracat_istisnasi') }}</dt><dd class="tutar">{{ tg(tutar.kdv) }}</dd>
+  {% else %}
+  {#- G3i madde 4: satır KDV'leri ile kargo KDV'si ayrı (özet KDV = ürünler + kargo). G3l madde 6: oran satırda
+     (karışık oranlarda oranlar "+" ile) #}
+  {% set oranlar = tutar.satirlar | map(attribute='kalem.kdv_orani') | map('int') | select('gt', 0) | unique | sort | list %}
+  <dt data-e2e="satir-kdv">{{ t('tutar.kdv_urunler') }}{% if oranlar %} <span class="kdv-oran">{% for o in oranlar %}{% if not loop.first %} + {% endif %}{{ t('pb.kdv_orani', oran=o) }}{% endfor %}</span>{% endif %}</dt><dd class="tutar">{{ para(tutar.kdv - tutar.kargo_kdv, tutar.para_birimi) }}</dd>
+  <dt data-e2e="satir-kdv-kargo">{{ t('tutar.kdv_kargo') }}{% if tutar.kargo_net > 0 and tutar.kargo_kdv > 0 %} <span class="kdv-oran">{{ t('pb.kdv_orani', oran=(tutar.kargo_kdv * 100 / tutar.kargo_net) | round | int) }}</span>{% endif %}</dt><dd class="tutar">{{ para(tutar.kargo_kdv, tutar.para_birimi) }}</dd>
+  {% endif %}
+  <dt class="toplam">{{ t('tutar.mal_bedeli' if dap else ('tutar.tahmini_toplam' if tahmini else 'tutar.toplam')) }}</dt><dd class="toplam tutar">{% if ag and ag.toplam is defined and ag.toplam is not none %}{{ para(tutar.toplam, tutar.para_birimi) }} <small class="toplam-ek">{% if not tahmini %}{{ t('tutar.odenecek') }} · {% endif %}≈ {{ para(ag.toplam, ag.para) }}</small>{#- fix 1 M-3: sepette (tahmini) "(ödenecek)" yok #}{#- G3l madde 6: € KDV hariç gösterimde ödenecek ₺ toplam + € karşılığı #}{% elif tl_kur %}{{ para(tutar.toplam * tl_kur, 'TRY') }} <small class="fiyat-ikincil">≈ {{ para(tutar.toplam, tutar.para_birimi) }}</small>{% else %}{{ para(tutar.toplam, tutar.para_birimi) }}{% endif %}</dd>
+</dl>
+{% if dap %}
+<p class="not" data-e2e="not-dap">{{ t('tutar.dap_notu') }}</p>
+{#- G3g madde 13: navlun teklifi ve ithalat KDV'si (docs/hukuk-notlari.md) #}
+<p class="not" data-e2e="not-navlun">{{ t('tutar.navlun_notu') }}</p>
+<p class="not" data-e2e="not-ithalat">{{ t('tutar.ithalat_notu') }}</p>
+{% endif %}
+{% if tutar.ihracat_istisnasi and ulke %}{% set ihracat_fabrika = teslim == 'fabrika' %}{% include "_ihracat_kdv.html" %}{% endif %}
+{% if hata == 'kur_yok' %}
+<p class="not not-kur-yok" data-e2e="not-kur-yok">{{ t('tutar.kur_yok_notu') }}</p>
+{% endif %}
+{% if tl_odemede is defined and tl_odemede %}<p class="not" data-e2e="not-tahsilat-try-odemede">{{ t('tutar.tahsilat_try_odemede') }}</p>{% endif %}
+{% if ag and tutar.para_birimi == 'TRY' %}<p class="not" data-e2e="not-tahsilat-try">{{ t('tutar.tahsilat_try_notu') }}</p>
+{%- elif ag %}<p class="not" data-e2e="not-tahsilat-eur">{{ t('tutar.tahsilat_eur_notu') }}</p>{% endif %}
+{% if tutar.kur %}
+<p class="kur-satiri{% if kur_bayat %} kur-bayat{% endif %}">{{ t('tutar.kur', kur=kur_sayi(tutar.kur), tarih=kur_tarihi) }}{% if kur_bayat %} · {{ t('fiyat.kur_bayat') }}{% endif %}</p>
+{% endif %}

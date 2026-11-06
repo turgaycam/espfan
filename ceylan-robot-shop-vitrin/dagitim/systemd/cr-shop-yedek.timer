@@ -1,0 +1,10 @@
+[Unit]
+Description=cr-shop-demo SQLite yedeği her gece 03:00
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+Unit=cr-shop-yedek.service
+
+[Install]
+WantedBy=timers.target

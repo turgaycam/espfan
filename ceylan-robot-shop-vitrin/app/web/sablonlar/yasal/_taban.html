@@ -1,0 +1,11 @@
+{% extends "taban.html" %}
+{% block icerik %}
+<article class="yasal" lang="{{ dil }}">
+  <div class="taslak-bandi" role="note">{{ t('yasal_metin.taslak_bandi') }}</div>
+  {% block metin %}{% endblock %}
+  <footer class="yasal-dipnot">
+    <p>{{ t('yasal_metin.surum') }} · <a href="/{{ dil }}/yasal/kunye">{{ t('yasal_metin.kunye') }}</a></p>
+    <p>{{ t('yasal_metin.ceviri_notu') }}</p>
+  </footer>
+</article>
+{% endblock %}

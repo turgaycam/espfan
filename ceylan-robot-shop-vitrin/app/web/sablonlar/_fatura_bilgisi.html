@@ -1,0 +1,25 @@
+{% from "_makrolar.html" import ikon with context %}
+{# G3c madde 20: kurumsal müşteride unvan + VKN/vergi dairesi, yurt dışında firma + ülke + VAT ID (fatura bu bilgilerle).
+   Bireysel müşteride blok yok. Ödeme formunda bilgiler hesaptandır; G3i inceleme I-1: sipariş sayfalarında `alici`
+   (siparişteki anlık görüntü, baglam.siparis_alicisi) verilir ve sonradan hesapta yapılan değişiklik yansımaz. #}
+{% if alici is defined and alici %}{% set fb = alici %}
+{% elif musteri %}{% set fb = {'tip': musteri.tip.value, 'ad': musteri.ad, 'vkn': musteri.vergi_kimlik_no, 'vergi_dairesi': musteri.vergi_dairesi, 'vat_id': musteri.vat_id, 'ulke': musteri.ulke} %}
+{% else %}{% set fb = none %}{% endif %}
+{% if fb and fb.tip != 'bireysel' %}
+<section class="fatura-bilgisi" data-e2e="fatura-bilgisi" aria-labelledby="fatura-bilgisi-baslik">
+  <h3 id="fatura-bilgisi-baslik">{{ ikon('dosya', 'ikon-16') }} {{ t('odeme.fatura_bilgisi') }}</h3>
+  <dl>
+    {% if fb.tip == 'kurumsal' %}
+    <dt>{{ t('odeme.unvan') }}</dt><dd>{{ fb.ad }}</dd>
+    <dt>{{ t('odeme.vkn') }}</dt><dd class="parca-no">{{ fb.vkn or '—' }}</dd>
+    <dt>{{ t('hesap.vergi_dairesi') }}</dt><dd>{{ fb.vergi_dairesi or '—' }}</dd>
+    {% else %}
+    <dt>{{ t('odeme.firma') }}</dt><dd>{{ fb.ad }}</dd>
+    <dt>{{ t('odeme.ulke') }}</dt><dd>{{ t('ulke.' ~ fb.ulke) if fb.ulke in ulkeler else fb.ulke }}</dd>
+    <dt>{{ t('odeme.vat_id') }}</dt><dd>{% if fb.vat_id %}<span class="parca-no">{{ fb.vat_id }}</span>{% elif ab_ulkesi_mi(fb.ulke) %}<span class="uyari-metin">{{ t('odeme.vat_yok') }}</span>{% else %}—{% endif %}</dd>
+    {% endif %}
+  </dl>
+  {#- G3i madde 9: unvan, vergi dairesi, adres ve telefon "Fatura bilgilerim" sayfasından değişir #}
+  <p class="alan-ipucu">{{ t('odeme.fatura_bilgisi_not') }} <a href="/{{ dil }}/hesabim/fatura" data-e2e="fatura-bilgilerim-bag">{{ t('hesap.fatura_bilgilerim') }}</a></p>
+</section>
+{% endif %}

@@ -1,0 +1,19 @@
+{# K22 / G3g madde 23 adım göstergesi, gerçek akışa göre: 1 Sepet → 2 Bilgiler (ödeme formu: hesap, adres, teslim,
+   onaylar ve kontrol özeti) → 3 Ödeme (kart / 3D Secure; havalede proforma) → 4 Onay. Adım adı sayfa başlığıyla aynıdır.
+   adim: geçerli adım (aria-current="step"). #}
+<nav class="adimlar" aria-label="{{ t('odeme.adimlar') }}">
+  <ol>
+    {#- G3k madde 16: havale bekleyen siparişte son adım "Sipariş alındı" (son_adim) #}
+    {#- fix 1 m-6: o durumda "Ödeme" adımı tamamlanmış sayılmaz (ödeme bekleniyor) #}
+    {% set odeme_bekliyor = son_adim is defined and son_adim == 'siparis_alindi' %}
+    {% for no, ad in [(1, 'sepet'), (2, 'bilgiler'), (3, 'odeme'), (4, son_adim if son_adim is defined else 'onay')] %}
+    {% set tamam = no < adim and not (odeme_bekliyor and no == 3) %}
+    <li class="adim{% if tamam %} tamam{% elif no == adim %} gecerli{% elif odeme_bekliyor and no == 3 %} bekliyor{% endif %}"{% if no == adim %} aria-current="step"{% endif %}>
+      {%- if no == 1 and adim in (2, 3) %}<a href="/{{ dil }}/sepet">{% endif -%}
+      <span class="adim-no">{{ no }}</span> <span class="adim-ad">{{ t('odeme.adim_' ~ ad) }}</span>
+      {%- if tamam %}<span class="gizli"> ({{ t('odeme.adim_tamam') }})</span>{% elif odeme_bekliyor and no == 3 %}<span class="gizli"> ({{ t('odeme.adim_bekliyor') }})</span>{% endif -%}
+      {%- if no == 1 and adim in (2, 3) %}</a>{% endif -%}
+    </li>
+    {% endfor %}
+  </ol>
+</nav>

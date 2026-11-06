@@ -1,0 +1,31 @@
+# /opt/cr-shop-demo/ortam — sahibi crshop:crshop, izin 600. Depoya GERÇEK değer yazılmaz.
+# systemd EnvironmentFile biçimi. Değerler TEK TIRNAK içinde yazılır: parola özetindeki "$" işaretleri olduğu gibi kalır.
+#
+# SHOP_GIZLI_ANAHTAR üretimi : python3 -c "import secrets;print(secrets.token_urlsafe(48))"
+# SHOP_YONETICI_OZET üretimi : venv/bin/python -m betikler.yonetici_ozet   (parola kimlik Excel'inde, "Sunucular" sayfası)
+SHOP_DB='/opt/cr-shop-demo/veri/shop.db'
+SHOP_GIZLI_ANAHTAR='ornek-degil-uretilecek'
+SHOP_YONETICI='yonetici'
+SHOP_YONETICI_OZET='scrypt$16384$8$1$ornek$ornek'
+# İsteğe bağlı (varsayılan https://www.ceylanrobot.com):
+# SHOP_KAYNAK_API='https://www.ceylanrobot.com'
+# İsteğe bağlı (varsayılan "+90 (332) 239 15 75"; boş değer başlıktaki telefon satırını kapatır):
+# SHOP_TELEFON='+90 (332) 239 15 75'
+# İsteğe bağlı: künyedeki iletişim e-postası (boşsa satır gösterilmez)
+# SHOP_EPOSTA=''
+# İsteğe bağlı (varsayılan SHOP_DB klasörü altında gorsel/; yazılabilir olmalı):
+# SHOP_GORSEL_DIZIN='/opt/cr-shop-demo/veri/gorsel'
+# SEO (G2) - isteğe bağlı. Demoda hiçbiri gerekmez (arama motorlarına kapalıdır).
+# Yayın modu: demo (varsayılan: robots.txt Disallow /, her sayfada noindex) | uretim (indekslenebilir; yalnız işlemsel sayfalar noindex):
+# SHOP_YAYIN_MODU='demo'
+# Mutlak URL'ler (canonical, sitemap, JSON-LD, llms.txt) için site kökü, sonda / olmadan (varsayılan http://192.168.5.30:3030):
+# SHOP_SITE_KOK='http://192.168.5.30:3030'
+# Üretimde robots.txt'te ayrı blokla izin verilen yapay zekâ tarayıcıları (virgüllü; varsayılan aşağıdaki):
+# SHOP_AI_TARAYICILAR='GPTBot,ClaudeBot,PerplexityBot,Google-Extended,CCBot'
+# Ürün/kategori sayfalarında IP başına dakikadaki istek sınırı (varsayılan 120; aşımda 429):
+# SHOP_SAYFA_HIZ='120'
+# Koruma muafiyeti: virgüllü IP/CIDR listesi (varsayılan boş). Listedeki istemciler ürün/kategori hız sınırına ve bal küpü engeline
+# tabi değildir (bal küpü isabeti yalnız günlüğe yazılır). Staging'de e2e çalıştıran laptop IP'sini buraya yazın; geçersiz değer başlangıçta hata verir.
+# SHOP_KORUMA_MUAF_IP='192.168.5.0/28,192.168.5.77'
+# Havale/EFT siparişinin ödeme süresi, iş günü (varsayılan 3; 1–60). Süre dolunca sipariş "süresi doldu" olur ve stok ayırmaz:
+# SHOP_HAVALE_GUN='3'

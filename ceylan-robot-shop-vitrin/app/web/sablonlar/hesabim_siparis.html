@@ -1,0 +1,80 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import ikon, parca_kodlari with context %}
+{% block baslik %}{{ t('siparis.baslik', no=siparis.no) }}{% endblock %}
+{% block icerik %}
+{# G3i madde 8: Hesabım > sipariş ayrıntısı (yalnız sahibi): kalemler, durum, PO, belgeler, kalemleri tekrar sepete ekle #}
+<nav class="iz" aria-label="{{ t('katalog.iz') }}">
+  <ol>
+    <li><a href="/{{ dil }}/hesabim">{{ t('hesap.hesabim_baslik') }}</a></li>
+    <li><span aria-current="page">{{ siparis.no }}</span></li>
+  </ol>
+</nav>
+<section class="siparis siparis-ayrinti">
+  <h1>{{ t('siparis.baslik', no=siparis.no) }}</h1>
+  <dl class="siparis-bilgi">
+    <dt>{{ t('siparis.durum_etiket') }}</dt><dd><strong class="rozet durum-rozeti durum-{{ siparis.durum }}" data-e2e="siparis-durum" data-durum="{{ siparis.durum }}">{{ t('siparis_durum.' ~ siparis.durum) }}</strong></dd>
+    <dt>{{ t('hesap.sutun_tarih') }}</dt><dd>{{ tarih_tz(siparis.olusturma, siparis.teslimat_ulkesi) }}</dd>
+    <dt>{{ t('siparis.odeme_yontemi') }}</dt><dd>{{ t('odeme.yontem_' ~ siparis.odeme_yontemi) }} · {{ t('siparis_durum.' ~ siparis.durum) }}</dd>
+    <dt>{{ t('siparis.teslim_yontemi') }}</dt><dd>{{ t('odeme.teslim_' ~ siparis.teslim_yontemi) }}</dd>
+    {% if siparis.teslim_yontemi == 'yurtdisi_dap' %}<dt>{{ t('hesap.navlun_teklifi') }}</dt><dd data-e2e="navlun-teklifi">{{ t('hesap.navlun_bekleniyor') }}</dd>{% endif %}
+    {% if siparis.musteri_po %}<dt>{{ t('siparis.po') }}</dt><dd class="parca-no">{{ siparis.musteri_po }}</dd>{% endif %}
+    {% if siparis.odeme_yontemi == 'havale' and siparis.durum == 'odeme_bekliyor' and siparis.odeme_son_tarih %}<dt>{{ t('proforma.son_tarih') }}</dt><dd>{{ tarih_tz(siparis.odeme_son_tarih, siparis.teslimat_ulkesi) }}</dd>{% endif %}
+  </dl>
+  <div class="tablo-sar">
+    <table class="tablo siparis-ayrinti-kalemler">
+      <thead><tr>
+        <th scope="col">{{ t('sepet.urun') }}</th>
+        <th scope="col" class="sayi">{{ t('sepet.adet') }}</th>
+        <th scope="col" class="sayi">{{ t('pb.tutar') }}</th>
+      </tr></thead>
+      <tbody>
+        {% for k in siparis.kalemler %}{% set u = urunler.get(k.urun_id) %}
+        <tr>
+          <td><a href="/{{ dil }}/urun/{{ k.urun_id }}">{{ urun_ad(k.urun_id, k.ad) }}</a> {% if u %}{{ parca_kodlari(u) }}{% else %}<span class="parca-no">{{ k.sku }}</span>{% endif %}
+          {#- G3l madde 9: tahmini varış, sipariş onay sayfasındakiyle aynı hesap (siparis.html) #}
+          {%- if u and siparis.durum in ('odeme_bekliyor', 'odendi', 'hazirlaniyor') %}<span class="not kalem-teslim">{{ siparis_teslim(u, siparis) }}</span>{% elif k.tedarik_teyit %}<span class="not">{{ t('sepet.tedarik_teyit') }}</span>{% endif %}</td>
+          <td class="sayi">{{ k.adet }}</td>
+          <td class="sayi">{{ para(k.net, siparis.para_birimi) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {#- G3l madde 9: durum geçmişi (siparişteki zaman damgalarından) #}
+  <section class="durum-gecmisi-bolum" aria-labelledby="gecmis-baslik">
+    <h2 id="gecmis-baslik">{{ t('hesap.durum_gecmisi') }}</h2>
+    <ol class="durum-gecmisi" data-e2e="durum-gecmisi">
+      {% for g in gecmis %}<li>{{ t(g.anahtar) }}{% if g.son %} — {{ t('hesap.gecmis_son_tarih') }} {{ tarih_tz(g.son, siparis.teslimat_ulkesi) }}{% elif g.zaman %} {{ tarih_tz(g.zaman, siparis.teslimat_ulkesi) }}{% endif %}</li>{% endfor %}
+    </ol>
+  </section>
+  {#- G3k madde 15: tutar özeti (ara toplam, kargo / navlun, KDV ürünler + kargo, genel toplam, sabitlenen kur ve €
+     karşılığı), adresler (siparişteki anlık görüntü) ve teslim yöntemi #}
+  <div class="siparis-ayrinti-ozet" data-e2e="siparis-ayrinti-ozet">
+    {% include "_siparis_tutar.html" %}
+  </div>
+  <div class="adresler">
+    {% for baslik, a in (('siparis.teslimat', siparis.teslimat_adresi), ('siparis.fatura', siparis.fatura_adresi)) %}
+    <div class="adres-kart"><h2>{{ t(baslik) }}</h2><address>{{ a.ad_soyad }}<br>{{ a.satir1 }}{% if a.satir2 %}<br>{{ a.satir2 }}{% endif %}<br>{% if a.posta_kodu %}{{ a.posta_kodu }} {% endif %}{{ a.sehir }} / {{ a.ulke }}{% if a.telefon %}<br>{{ a.telefon }}{% endif %}</address></div>
+    {% endfor %}
+  </div>
+
+  {% include "_fatura_bilgisi.html" %}
+
+  <section class="siparis-belgeler" aria-labelledby="belgeler-baslik">
+    <h2 id="belgeler-baslik">{{ t('hesap.belgeler') }}</h2>
+    <ul>
+      {% if siparis.odeme_yontemi == 'havale' and siparis.durum != 'iptal' %}<li><a href="/{{ dil }}/hesabim/siparis/{{ siparis.no }}/proforma" data-e2e="belge-proforma">{{ ikon('dosya', 'ikon-16') }} {{ t('hesap.belge_proforma') }}</a></li>{% endif %}
+      <li><a href="/{{ dil }}/siparis/{{ siparis.no }}" data-e2e="belge-ozet">{{ ikon('dosya', 'ikon-16') }} {{ t('hesap.belge_ozet') }}</a></li>
+    </ul>
+    {#- G3j madde 15 #}
+    {% if siparis.durum not in ('iptal', 'suresi_doldu') %}<p class="alan-ipucu" data-e2e="fatura-eposta">{{ t('siparis.fatura_eposta') }}</p>{% endif %}
+  </section>
+
+  <form method="post" action="/{{ dil }}/hesabim/siparis/{{ siparis.no }}/tekrar" class="tekrar-ekle">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit" class="dugme ikincil" data-e2e="tekrar-ekle">{{ ikon('sepet', 'ikon-16') }} {{ t('hesap.tekrar_ekle') }}</button>
+    <p class="alan-ipucu">{{ t('hesap.tekrar_ekle_ipucu') }}</p>
+  </form>
+  <p><a href="/{{ dil }}/hesabim">{{ t('siparis.hesabim') }}</a></p>
+</section>
+{% endblock %}

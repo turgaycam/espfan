@@ -1,0 +1,91 @@
+{% extends "yonetim/_taban.html" %}
+{% from "_makrolar.html" import ikon with context %}
+{% block baslik %}{{ t('yonetim.menu_veri_kalitesi') }}{% endblock %}
+{% block icerik %}
+{# G3j madde 4: kaynak verideki tutarsızlıklar (yalnız okuma; sitede veri değiştirilmez) #}
+<div class="yonetim">
+  {% include "yonetim/_menu.html" %}
+  <section class="yonetim-icerik veri-kalitesi" aria-labelledby="yonetim-h1">
+    <h1 id="yonetim-h1">{{ t('yonetim.menu_veri_kalitesi') }}</h1>
+    <p class="alan-ipucu">{{ t('vk.aciklama') }}</p>
+
+    <section class="vk-bolum" data-e2e="vk-kdv" aria-labelledby="vk-kdv">
+      <h2 id="vk-kdv">{{ t('vk.kdv_baslik') }} <span class="yonetim-sayac">{{ rapor.kdv | length }}</span></h2>
+      {% if rapor.kdv %}
+      <div class="tablo-sar">
+      <table class="tablo yonetim-tablo">
+        <thead><tr><th scope="col">{{ t('vk.oran') }}</th><th scope="col">{{ t('vk.urunler') }}</th></tr></thead>
+        <tbody>
+          {% for u, oran, gecerli in rapor.kdv %}
+          <tr{% if not gecerli %} class="yt-acil"{% endif %}>
+            <td class="sayi">%{{ oran }}{% if not gecerli %} <span class="rozet rozet-acil">{{ t('vk.kdv_gecersiz') }}</span>{% endif %}</td>
+            <td><a href="/tr/urun/{{ u.id }}">{{ u.ad }}</a> <span class="parca-no yt-ikincil">{{ u.uretici_kodu or u.sku }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}<p class="yonetim-bos">{{ t('vk.bos') }}</p>{% endif %}
+    </section>
+
+    <section class="vk-bolum" data-e2e="vk-fiyat" aria-labelledby="vk-fiyat">
+      <h2 id="vk-fiyat">{{ t('vk.fiyat_baslik') }} <span class="yonetim-sayac">{{ rapor.ayni_fiyat_toplam }}</span></h2>
+      {% if rapor.ayni_fiyat %}
+      <div class="tablo-sar">
+      <table class="tablo yonetim-tablo">
+        <thead><tr><th scope="col">{{ t('vk.fiyat') }}</th><th scope="col">{{ t('vk.urunler') }}</th></tr></thead>
+        <tbody>
+          {% for g in rapor.ayni_fiyat %}
+          <tr>
+            <td class="sayi">{{ g.anahtar }} € <span class="yt-ikincil">× {{ g.urunler | length }}</span></td>
+            <td>{% for u in g.urunler %}<span class="yt-satir"><a href="/tr/urun/{{ u.id }}">{{ u.ad }}</a> <span class="parca-no yt-ikincil">{{ u.uretici_kodu or u.sku }}</span></span>{% endfor %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}<p class="yonetim-bos">{{ t('vk.bos') }}</p>{% endif %}
+    </section>
+
+    <section class="vk-bolum" data-e2e="vk-kod" aria-labelledby="vk-kod">
+      <h2 id="vk-kod">{{ t('vk.kod_baslik') }} <span class="yonetim-sayac">{{ rapor.ayni_kod_toplam }}</span></h2>
+      {% if rapor.ayni_kod %}
+      <div class="tablo-sar">
+      <table class="tablo yonetim-tablo">
+        <thead><tr><th scope="col">{{ t('vk.kod') }}</th><th scope="col">{{ t('vk.urunler') }}</th></tr></thead>
+        <tbody>
+          {% for g in rapor.ayni_kod %}
+          <tr>
+            <td><span class="parca-no">{{ g.anahtar }}</span> <span class="yt-ikincil">× {{ g.urunler | length }}</span></td>
+            <td>{% for u in g.urunler %}<span class="yt-satir"><a href="/tr/urun/{{ u.id }}">{{ u.ad }}</a> <span class="parca-no yt-ikincil">{{ u.sku }}</span></span>{% endfor %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}<p class="yonetim-bos">{{ t('vk.bos') }}</p>{% endif %}
+    </section>
+    {#- G3k fix 1 (I-3): kaynak teknik satırlarında kesik metin ve kW → Nm kopyası izlenimi (yalnız rapor) #}
+    {% for anahtar, satirlar, toplam in (('kesik', rapor.kesik_teknik, rapor.kesik_teknik_toplam), ('tork', rapor.tork_kw, rapor.tork_kw_toplam)) %}
+    <section class="vk-bolum" data-e2e="vk-{{ anahtar }}" aria-labelledby="vk-{{ anahtar }}">
+      <h2 id="vk-{{ anahtar }}">{{ t('vk.' ~ anahtar ~ '_baslik') }} <span class="yonetim-sayac">{{ toplam }}</span></h2>
+      {% if satirlar %}
+      <div class="tablo-sar">
+      <table class="tablo yonetim-tablo">
+        <thead><tr><th scope="col">{{ t('vk.teknik_satir') }}</th><th scope="col">{{ t('vk.urunler') }}</th></tr></thead>
+        <tbody>
+          {% for u, etiket, deger in satirlar %}
+          <tr>
+            <td>{{ etiket }}: {{ deger[:120] }}</td>
+            <td><a href="/tr/urun/{{ u.id }}">{{ u.ad }}</a> <span class="parca-no yt-ikincil">{{ u.uretici_kodu or u.sku }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}<p class="yonetim-bos">{{ t('vk.bos') }}</p>{% endif %}
+    </section>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

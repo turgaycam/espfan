@@ -1,0 +1,225 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import ikon, tutar_gosterimi with context %}
+{% block baslik %}{{ t('odeme.adim_bilgiler') }}{% endblock %}
+{% block icerik %}
+{% macro alan(ad, etiket, tip="text", zorunlu=True, ek="", html_zorunlu=none) %}
+<div class="alan{% if hatalar.get(ad) %} hatali{% endif %}">
+  <label for="{{ ad }}">{{ t(etiket) }}{% if zorunlu %} <span class="zorunlu" aria-hidden="true">*</span>{% endif %}</label>
+  <input id="{{ ad }}" name="{{ ad }}" type="{{ tip }}" value="{{ alanlar[ad] }}" maxlength="200"{% if zorunlu %} aria-required="true"{% endif %}{% if (zorunlu if html_zorunlu is none else html_zorunlu) and (ad.startswith('teslimat_') or ad.startswith('hesap_')) %} required{% endif %}{% if ek %} {{ ek|safe }}{% endif %}{% if hatalar.get(ad) %} aria-invalid="true" aria-describedby="hata-{{ ad }}"{% endif %}>
+  {% if hatalar.get(ad) %}<p class="alan-hata" id="hata-{{ ad }}">{{ t(hatalar[ad]) }}</p>{% endif %}
+</div>
+{% endmacro %}
+{% macro ulke_secimi(ad, ek="") %}
+<div class="alan{% if hatalar.get(ad) %} hatali{% endif %}">
+  <label for="{{ ad }}">{{ t('odeme.ulke') }} <span class="zorunlu" aria-hidden="true">*</span></label>
+  <select id="{{ ad }}" name="{{ ad }}" class="ulke-secimi" aria-required="true"{% if ek %} {{ ek|safe }}{% endif %}{% if hatalar.get(ad) %} aria-invalid="true" aria-describedby="hata-{{ ad }}"{% endif %}>
+    {% for u in ulke_secenekleri %}<option value="{{ u }}"{% if u == alanlar[ad] %} selected{% endif %}>{{ t('ulke.' ~ u) if u in ulkeler else u }}</option>{% endfor %}
+  </select>
+  {% if hatalar.get(ad) %}<p class="alan-hata" id="hata-{{ ad }}">{{ t(hatalar[ad]) }}</p>{% endif %}
+</div>
+{% endmacro %}
+{% macro onay(ad, etiket, belgeler) %}
+<div class="alan onay-kutusu{% if hatalar.get(ad) %} hatali{% endif %}">
+  <label class="secim"><input type="checkbox" id="{{ ad }}" name="{{ ad }}" value="1"{% if alanlar[ad] %} checked{% endif %}{% if hatalar.get(ad) %} aria-invalid="true" aria-describedby="hata-{{ ad }}"{% endif %}> <span>{{ t(etiket) }}</span></label>
+  <p class="alan-ipucu belge-baglantilari">{% for sayfa, belge in belgeler %}<a href="/{{ dil }}/yasal/{{ sayfa }}" target="_blank" rel="noopener">{{ ikon('dosya', 'ikon-16') }} {{ t(belge) }}</a>{% endfor %}</p>
+  {% if hatalar.get(ad) %}<p class="alan-hata" id="hata-{{ ad }}">{{ t(hatalar[ad]) }}</p>{% endif %}
+</div>
+{% endmacro %}
+<section class="odeme">
+  {% include "_adimlar.html" %}
+  <h1>{{ t('odeme.adim_bilgiler') }}</h1>
+  <p class="uyari demo-uyari" role="note">{{ ikon('uyari', 'ikon-16') }} {{ t('odeme.gercek_veri_uyari') }}</p>
+  {% if dusenler %}<div class="uyari" role="alert">{{ t('sepet.dusen_urunler', adlar=dusenler|join(', ')) }}</div>{% endif %}
+  {% if mesaj or islem_hatasi %}
+  {# G3a Ö1: gönderim sonrası iş kuralı hatası formun üstünde, nedeniyle; site.js odağı buraya taşır #}
+  <div class="form-hata-ozet islem-hatasi" role="alert" tabindex="-1" data-hata-ozet>
+    <p><strong>{{ t('odeme.olusturulamadi') }}</strong> {{ t(islem_hatasi or mesaj) }}</p>
+    {% if stok_sorunlari %}
+    {# G3e düzeltme 2 (N-1): başka siparişlerce ayrılan stok; sepette yapılan düzeltme ve teklif yolu #}
+    <ul class="stok-sorunlari" data-e2e="stok-sorunlari">
+      {% for s in stok_sorunlari %}<li><strong>{{ urun_ad(s.urun_id, s.ad) }}</strong>: {{ t('odeme.stok_ayrilabilir', adet=s.kalan) }} {{ t('odeme.stok_guncellendi', adet=s.kalan) if s.kalan > 0 else t('odeme.stok_cikarildi') }} <a href="{{ s.teklif }}">{{ t('odeme.stok_teklif') }}</a></li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if islem_hatasi == 'odeme.hata_kur_yok' %}<p class="islem-eylemler"><a class="dugme dugme-kucuk" href="/{{ dil }}/teklif">{{ t('odeme.teklif_iste') }}</a>{% if telefon %} <a href="tel:{{ telefon_tel }}">{{ ikon('telefon', 'ikon-16') }} {{ telefon }}</a>{% endif %}</p>{% endif %}
+  </div>
+  {% elif hata %}<div class="uyari" role="alert">{{ t('hata_kodu.' ~ hata) }}</div>{% endif %}
+  {% if hata_ozeti %}
+  <div class="form-hata-ozet" role="alert" tabindex="-1" data-hata-ozet>
+    <p>{{ t('odeme.form_hatali') }}</p>
+    <ul>{% for h in hata_ozeti %}<li><a href="#{{ h.hedef }}">{% for e in h.etiketler %}{{ t(e) }}{% if not loop.last %} – {% endif %}{% endfor %}: {{ t(h.hata) }}</a></li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  {% if not kalemler %}
+  <p>{{ t('sepet.bos') }} <a href="/{{ dil }}/sepet">{{ t('odeme.sepete_don') }}</a></p>
+  {% else %}
+  {#- G3g madde 25: tarayıcı doğrulaması açık (zorunlu teslimat ve hesap alanlarında required); sunucu doğrulaması
+     aynen. Fatura alanları ("aynı" işaretliyken gizli) ve tipe göre gizlenen alanlar required değildir. #}
+  <form method="post" action="/{{ dil }}/odeme" class="odeme-formu" data-tek-gonderim>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="gosterilen_toplam" value="{{ gosterilen_toplam }}">
+    <input type="hidden" name="gosterilen_kur" value="{{ gosterilen_kur }}">
+
+    {% if hesap %}
+    {# G3g madde 1: girişsiz ödeme: hesap bu formla, siparişle aynı işlemde açılır (misafir ödeme değildir). Tipe ait
+       alan grupları CSS :has() ile (site.js yedeği: hidden) gizlenir; JS'siz ve :has() yoksa hepsi görünür, zorunluluk
+       sunucuda tipe göredir. #}
+    <fieldset class="bolum odeme-hesap" id="hesap" data-e2e="odeme-hesap">
+      <legend>{{ ikon('kullanici', 'ikon-16') }} {{ t('odeme.hesap_baslik') }}</legend>
+      <p class="alan-ipucu odeme-hesap-giris">{{ t('odeme.hesap_aciklama') }} {{ t('odeme.hesap_var') }} <a href="/{{ dil }}/giris?sonraki={{ ('/' ~ dil ~ '/odeme') | urlencode | replace('/', '%2F') }}" data-e2e="odeme-hesap-giris">{{ t('odeme.hesap_giris') }}</a></p>
+      <fieldset class="tip-secim odeme-tip{% if hatalar.get('hesap_tip') %} hatali{% endif %}">
+        <legend>{{ t('hesap.tip_baslik') }}</legend>
+        {% for tip in hesap_tipleri %}
+        <label><input type="radio" id="hesap_tip-{{ tip }}" name="hesap_tip" value="{{ tip }}"{% if alanlar.hesap_tip == tip %} checked{% endif %}>
+          <span>{{ t('hesap.tip_' ~ tip) }}<small>{{ t('hesap.tip_' ~ tip ~ '_aciklama') }}</small></span></label>
+        {% endfor %}
+        {% if hatalar.get('hesap_tip') %}<p class="alan-hata" id="hata-hesap_tip">{{ t(hatalar['hesap_tip']) }}</p>{% endif %}
+      </fieldset>
+      {{ alan('hesap_eposta', 'hesap.eposta', tip='email', ek='autocomplete="email" spellcheck="false"') }}
+      {{ alan('hesap_parola', 'hesap.parola', tip='password', ek='autocomplete="new-password" minlength="10"') }}
+      <p class="alan-ipucu">{{ t('hesap.parola_ipucu') }}</p>
+      {% if parola_yeniden %}<p class="alan-ipucu parola-yeniden" id="parola-yeniden" role="note">{{ ikon('bilgi', 'ikon-16') }} {{ t('odeme.parola_yeniden') }}</p>{% endif %}
+      <div class="tip-alanlari" data-tipler="kurumsal yurtdisi">
+        {{ alan('hesap_firma', 'odeme.hesap_firma', html_zorunlu=False, ek='autocomplete="organization"') }}
+      </div>
+      <div class="tip-alanlari" data-tipler="kurumsal">
+        <div class="alan-cifti">
+          {{ alan('hesap_vkn', 'hesap.vkn', html_zorunlu=False, ek='inputmode="numeric" autocomplete="off"') }}
+          {{ alan('hesap_vergi_dairesi', 'hesap.vergi_dairesi', html_zorunlu=False, ek='autocomplete="off"') }}
+        </div>
+      </div>
+      <div class="tip-alanlari" data-tipler="yurtdisi">
+        <div class="alan{% if hatalar.get('hesap_ulke') %} hatali{% endif %}">
+          <label for="hesap_ulke">{{ t('hesap.ulke') }} <span class="zorunlu" aria-hidden="true">*</span></label>
+          <select id="hesap_ulke" name="hesap_ulke" autocomplete="country"{% if hatalar.get('hesap_ulke') %} aria-invalid="true" aria-describedby="hata-hesap_ulke"{% endif %}>
+            {% for u in hesap_ulkeleri %}<option value="{{ u }}"{% if alanlar.hesap_ulke == u %} selected{% endif %}>{{ t('ulke.' ~ u) }}</option>{% endfor %}
+          </select>
+          {% if hatalar.get('hesap_ulke') %}<p class="alan-hata" id="hata-hesap_ulke">{{ t(hatalar['hesap_ulke']) }}</p>{% endif %}
+        </div>
+        {{ alan('hesap_vat_id', 'hesap.vat_id', zorunlu=False, ek='autocomplete="off" spellcheck="false"') }}
+        <p class="alan-ipucu">{{ t('hesap.vat_ipucu') }}</p>
+      </div>
+      <div class="alan onay-kutusu{% if hatalar.get('hesap_kvkk_onay') %} hatali{% endif %}">
+        <label class="secim"><input type="checkbox" id="hesap_kvkk_onay" name="hesap_kvkk_onay" value="1"{% if alanlar.hesap_kvkk_onay == '1' %} checked{% endif %} required{% if hatalar.get('hesap_kvkk_onay') %} aria-invalid="true" aria-describedby="hata-hesap_kvkk_onay"{% endif %}> <span>{{ t('hesap.kvkk_onay') }}</span></label>
+        <p class="alan-ipucu belge-baglantilari"><a href="/{{ dil }}/yasal/kvkk" target="_blank" rel="noopener">{{ ikon('dosya', 'ikon-16') }} {{ t('hesap.kvkk_bag') }}</a></p>
+        {% if hatalar.get('hesap_kvkk_onay') %}<p class="alan-hata" id="hata-hesap_kvkk_onay">{{ t(hatalar['hesap_kvkk_onay']) }}</p>{% endif %}
+      </div>
+    </fieldset>
+    {% endif %}
+
+    <fieldset class="bolum">
+      <legend>{{ t('odeme.teslimat_adresi') }}</legend>
+      {{ alan('teslimat_ad_soyad', 'odeme.ad_soyad', ek='autocomplete="name"') }}
+      {{ alan('teslimat_satir1', 'odeme.adres_satir1', ek='autocomplete="address-line1"') }}
+      {{ alan('teslimat_satir2', 'odeme.adres_satir2', zorunlu=False, ek='autocomplete="address-line2"') }}
+      <div class="alan-cifti">
+        {{ alan('teslimat_posta_kodu', 'odeme.posta_kodu', zorunlu=False, ek='autocomplete="postal-code"') }}
+        {{ alan('teslimat_sehir', 'odeme.sehir', ek='autocomplete="address-level2"') }}
+      </div>
+      {{ ulke_secimi('teslimat_ulke', ek='autocomplete="country"') }}
+      {{ alan('teslimat_telefon', 'odeme.telefon', tip='tel', zorunlu=False, ek='autocomplete="tel"') }}
+    </fieldset>
+
+    <div class="alan fatura-secim">
+      <label class="secim"><input type="checkbox" id="fatura_ayni" name="fatura_ayni" value="1"{% if alanlar.fatura_ayni %} checked{% endif %}> <span>{{ t('odeme.fatura_ayni') }}</span></label>
+    </div>
+    <fieldset class="bolum fatura-adresi">
+      <legend>{{ t('odeme.fatura_adresi') }}</legend>
+      {{ alan('fatura_ad_soyad', 'odeme.ad_soyad') }}
+      {{ alan('fatura_satir1', 'odeme.adres_satir1') }}
+      {{ alan('fatura_satir2', 'odeme.adres_satir2', zorunlu=False) }}
+      <div class="alan-cifti">
+        {{ alan('fatura_posta_kodu', 'odeme.posta_kodu', zorunlu=False) }}
+        {{ alan('fatura_sehir', 'odeme.sehir') }}
+      </div>
+      {{ ulke_secimi('fatura_ulke') }}
+      {{ alan('fatura_telefon', 'odeme.telefon', tip='tel', zorunlu=False) }}
+    </fieldset>
+
+    <fieldset class="bolum teslim-secim{% if hatalar.get('teslim') %} hatali{% endif %}" id="teslimat"{% if hatalar.get('teslim') %} aria-describedby="hata-teslim"{% endif %}>
+      <legend>{{ ikon('kamyon', 'ikon-16') }} {{ t('odeme.teslim_yontemi') }}</legend>
+      {% for y in teslim_secenekleri %}
+      <label class="secim secenek"><input type="radio" id="teslim-{{ y }}" name="teslim" value="{{ y }}"{% if y == teslim %} checked{% endif %}> <span>{{ t('odeme.teslim_' ~ y) }}</span></label>
+      {% endfor %}
+      {% if hatalar.get('teslim') %}<p class="alan-hata" id="hata-teslim">{{ t(hatalar['teslim']) }}</p>{% endif %}
+      <p class="alan-ipucu">{{ t('odeme.teslim_ulke_notu') }}</p>
+    </fieldset>
+
+    <aside class="siparis-ozeti" aria-labelledby="ozet-baslik">
+      <h2 id="ozet-baslik">{{ t('odeme.ozet') }}</h2>
+      {% include "_fatura_bilgisi.html" %}
+      <ul class="ozet-kalemleri">
+        {% for k in kalemler %}
+        <li>
+          {% set u = urunler.get(k.urun_id) %}
+          <span class="ozet-kalem-ad">{{ k.adet }} × {{ urun_ad(k.urun_id, k.ad) }}<span class="parca-no">{{ (u.uretici_kodu if u else none) or k.sku }}</span>{% if u %}<span class="not kalem-teslim">{{ teslim_notu(u, teslim_ulkesi) }}</span>{% elif k.tedarik_teyit %}<span class="not">{{ t('sepet.tedarik_teyit') }}</span>{% endif %}</span>
+          {% if tutar %}<span class="ozet-kalem-tutar">{{ tutar_gosterimi(kalem_gosterimleri[loop.index0], kdv_etiketi=true) }}</span>{% endif %}
+          {#- G3i madde 5: sepetteki tedarik notu ödeme özetinde de #}
+          {% if tedarik_teklifle(u) %}<p class="not-tedarik" data-e2e="not-tedarik">{{ ikon('bilgi', 'ikon-16') }}<span>{{ t('sepet.tedarik_notu') }} · <a href="/{{ dil }}/teklif?urun_id={{ k.urun_id }}&amp;adet={{ k.adet }}">{{ t('sepet.tedarik_teklif_bag') }}</a></span></p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% if tutar %}{% include "_tutar_ozeti.html" %}{% endif %}
+      {#- G3m madde 6: sepet ve ürün sayfasıyla aynı kargo / navlun cümlesi #}
+      {% if teslim in ('kargo', 'yurtdisi_dap') %}<p class="not kargo-notu">{{ ikon('kamyon', 'ikon-16') }} {{ t('kargo.tr' if teslim == 'kargo' else 'kargo.navlun') }}</p>{% endif %}
+      <p class="ozet-bag"><a class="sepete-don" href="/{{ dil }}/sepet">{{ t('odeme.sepete_don') }}</a></p>
+    </aside>
+
+    {% if hesap or not bireysel %}
+    {# G3e madde 15: kurumsal ve yurt dışı müşteride havale/EFT (proforma) seçeneği; G3m madde 23: yurt dışında havale
+       ilk ve varsayılan, kurumsalda kart varsayılan. G3g: girişsiz ödemede tipe göre (data-tipler) #}
+    <fieldset class="bolum odeme-yontemi"{% if hesap %} data-tipler="kurumsal yurtdisi"{% endif %}>
+      <legend>{{ ikon('kalkan', 'ikon-16') }} {{ t('odeme.odeme_yontemi') }}</legend>
+      {#- G3m madde 23: yurt dışı müşteride havale (proforma) ilk ve varsayılan #}
+      {% if hesap and odeme_varsayilan == 'havale' %}<input type="hidden" name="odeme_varsayilan" value="havale">{% endif %}
+      {% for y in (('havale', 'kart') if yurtdisi else ('kart', 'havale')) %}
+      <label class="secim secenek"><input type="radio" id="odeme-{{ y }}" name="odeme_yontemi" value="{{ y }}"{% if secili_yontem == y %} checked{% endif %}> <span>{{ t('odeme.yontem_' ~ y) }}</span></label>
+      {% endfor %}
+      <p class="alan-ipucu">{{ t('odeme.yontem_havale_ipucu') }}</p>
+      {% if hatalar.get('odeme_yontemi') %}<p class="alan-hata" id="hata-odeme_yontemi">{{ t(hatalar['odeme_yontemi']) }}</p>{% endif %}
+    </fieldset>
+    {% endif %}
+    {#- G3l madde 8: yalnız kart sunulan müşteri tipinde (bireysel; kural değişmez) havale/proforma yolu notu;
+       sepet ≥ 50.000 ₺ ise vurgulu. Girişsiz ödemede bireysel tip grubunda #}
+    {% macro havale_notu() -%}
+    <p class="not havale-notu{% if havale_notu_vurgu %} vurgulu{% endif %}" data-e2e="havale-notu">{{ ikon('bilgi', 'ikon-16') }}<span>{{ t('odeme.havale_notu') }} <a href="/{{ dil }}/kayit?tip=kurumsal">{{ t('odeme.havale_notu_hesap') }}</a> {{ t('odeme.havale_notu_veya') }} <a href="/{{ dil }}/teklif?sepet=1">{{ t('odeme.havale_notu_teklif') }}</a></span></p>
+    {%- endmacro %}
+    {% if hesap %}<div data-tipler="bireysel">{{ havale_notu() }}</div>
+    {% elif bireysel %}{{ havale_notu() }}{% endif %}
+
+    {#- G3i madde 6: isteğe bağlı satın alma (PO) numarası; onay, Hesabım, proforma ve yönetimde görünür #}
+    <div class="alan alan-po{% if hatalar.get('musteri_po') %} hatali{% endif %}">
+      <label for="musteri_po">{{ t('odeme.musteri_po') }}</label>
+      <input id="musteri_po" name="musteri_po" type="text" value="{{ alanlar.musteri_po }}" maxlength="200" autocomplete="off" spellcheck="false" aria-describedby="ipucu-musteri_po{% if hatalar.get('musteri_po') %} hata-musteri_po{% endif %}"{% if hatalar.get('musteri_po') %} aria-invalid="true"{% endif %}>
+      <p class="alan-ipucu" id="ipucu-musteri_po">{{ t('odeme.musteri_po_ipucu') }}</p>
+      {% if hatalar.get('musteri_po') %}<p class="alan-hata" id="hata-musteri_po">{{ t(hatalar['musteri_po']) }}</p>{% endif %}
+    </div>
+
+    <fieldset class="bolum onaylar">
+      <legend>{{ t('odeme.onaylar') }}</legend>
+      {% if hesap %}
+      <div data-tipler="bireysel">
+      {{ onay('on_bilgi_onay', 'odeme.onay_on_bilgi', [('on-bilgilendirme', 'odeme.belge_on_bilgilendirme')]) }}
+      {{ onay('mesafeli_onay', 'odeme.onay_mesafeli', [('mesafeli-satis', 'odeme.belge_mesafeli_satis')]) }}
+      </div>
+      <div data-tipler="kurumsal yurtdisi">
+      {{ onay('kosullar_onay', 'odeme.onay_kosullar', [('kullanim', 'odeme.belge_kullanim'), ('iade', 'odeme.belge_iade'), ('garanti', 'odeme.belge_garanti')]) }}
+      </div>
+      {% elif bireysel %}
+      {{ onay('on_bilgi_onay', 'odeme.onay_on_bilgi', [('on-bilgilendirme', 'odeme.belge_on_bilgilendirme')]) }}
+      {{ onay('mesafeli_onay', 'odeme.onay_mesafeli', [('mesafeli-satis', 'odeme.belge_mesafeli_satis')]) }}
+      {% else %}
+      {{ onay('kosullar_onay', 'odeme.onay_kosullar', [('kullanim', 'odeme.belge_kullanim'), ('iade', 'odeme.belge_iade'), ('garanti', 'odeme.belge_garanti')]) }}
+      {% endif %}
+    </fieldset>
+
+    <div class="odeme-dugmeler">
+      <button type="submit" name="islem" value="odeme" class="dugme dugme-buyuk" data-e2e="odeme-gonder">{{ ikon('kalkan', 'ikon-16') }} {{ t('odeme.siparisi_olustur') }}</button>
+      <button type="submit" name="islem" value="hesapla" class="dugme ikincil" formnovalidate>{{ t('odeme.yeniden_hesapla') }}</button>
+    </div>
+    {# G3g madde 8: seçili ödeme yöntemine göre açıklama (CSS :has); JS'siz ve :has'siz yedek: iki açıklama birden #}
+    <p class="odeme-aciklama odeme-aciklama-kart" data-e2e="odeme-aciklama-kart">{{ t('odeme.aciklama_kart') }}</p>
+    {% if hesap or not bireysel %}<p class="odeme-aciklama odeme-aciklama-havale"{% if hesap %} data-tipler="kurumsal yurtdisi"{% endif %} data-e2e="odeme-aciklama-havale">{{ t('odeme.aciklama_havale') }}{% if yurtdisi %} {{ t('odeme.banka_masraf') }}{% endif %}</p>{% endif %}
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

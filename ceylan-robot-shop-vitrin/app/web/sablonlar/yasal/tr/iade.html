@@ -1,0 +1,42 @@
+{% extends "yasal/_taban.html" %}
+{% block baslik %}İade ve Cayma Koşulları{% endblock %}
+{% block metin %}
+<h1>İade ve Cayma Koşulları</h1>
+<p class="yasal-ozet">Bireysel alıcılar 14 gün içinde cayma hakkına sahiptir. Kurumsal (ticari) alımlarda cayma hakkı uygulanmaz; iade yalnızca aşağıdaki sözleşmesel koşullarla mümkündür.</p>
+
+<h2>A. Bireysel (tüketici) alıcılar</h2>
+<h3>1. 14 günlük cayma hakkı</h3>
+<p>Ürünü teslim aldığınız günden itibaren 14 gün içinde gerekçe göstermeden sözleşmeden cayabilirsiniz. Birden fazla ürünün ayrı teslim edildiği siparişlerde süre son ürünün teslimiyle başlar.</p>
+<h3>2. Cayma hakkı nasıl kullanılır</h3>
+<ol>
+  <li>Sipariş numaranızı ve iade etmek istediğiniz ürünü belirterek Künye'deki e-posta adresine ya da yazılı olarak bildirimde bulunun. Gerekçe yazmanız gerekmez.</li>
+  <li>Ürünü bildiriminizden itibaren 10 gün içinde, mümkünse orijinal ambalajı, aksesuarları ve belgeleriyle birlikte size bildirilen anlaşmalı kargo şirketiyle gönderin.</li>
+  <li>Teslim masrafları dahil ödediğiniz tüm bedel, bildiriminizin bize ulaşmasından itibaren 14 gün içinde ödemede kullandığınız karta iade edilir. Ürün bize ulaşana veya gönderdiğinizi belgeleyene kadar iade bekletilebilir.</li>
+</ol>
+<h3>3. İade masrafı</h3>
+<p>Anlaşmalı kargo şirketiyle yapılan iadelerde gönderim masrafı sizden alınmaz. Başka bir taşıyıcı seçerseniz masraf size aittir. Ağır ve hacimli ürünlerde (ör. robot, pozisyoner) iade taşıması satıcıyla birlikte planlanır.</p>
+<h3>4. Cayma hakkının kullanılamayacağı ürünler</h3>
+<ul>
+  <li>İsteğiniz doğrultusunda özel olarak hazırlanan, programlanan veya birleştirilen ürünler,</li>
+  <li>Ambalajı açılmış yazılım lisansları ve dijital içerikler,</li>
+  <li>Teslimden sonra niteliği gereği başka ürünlerle ayrılmaz biçimde karışan ürünler.</li>
+</ul>
+<h3>5. Ayıplı ürün iadesi</h3>
+<p>Ayıplı ürünlerde cayma süresinden bağımsız olarak 6502 sayılı Kanun'daki seçimlik haklarınız (iade, değişim, onarım, indirim) iki yıl boyunca geçerlidir. Ayıplı ürünün iade taşıma masrafı satıcıya aittir.</p>
+
+<h2 id="ticari">B. Kurumsal alıcılar (B2B)</h2>
+<p>Ticari veya mesleki amaçla yapılan alımlarda 6502 sayılı Kanun ve cayma hakkı uygulanmaz. İlişki, 6098 sayılı Türk Borçlar Kanunu (TBK) ve 6102 sayılı Türk Ticaret Kanunu (TTK) ile <a href="/tr/yasal/kullanim">Kullanım ve Satış Koşulları</a>'na tabidir.</p>
+<ul>
+  <li><strong>Muayene ve ihbar:</strong> Ürünü teslim aldığınızda muayene etmeniz gerekir (TBK m.223, TTK m.23). Açıkça belli olan ayıpları teslimden itibaren {{ acik_ayip_gun }} gün içinde, açıkça belli olmayan ayıpları 8 gün içinde yapacağınız muayene sonucunda, olağan muayeneyle ortaya çıkarılamayan gizli ayıpları ise ortaya çıktıkları anda yazılı olarak bildirmelisiniz. Süresinde bildirilmeyen ayıplar için ürün kabul edilmiş sayılır.</li>
+  <li><strong>Yanlış veya eksik teslim:</strong> Siparişe uymayan ürün ücretsiz olarak değiştirilir ya da bedeli iade edilir; taşıma masrafı satıcıya aittir.</li>
+  <li><strong>Sözleşmesel iade:</strong> Bunun dışındaki iadeler satıcının yazılı onayına bağlıdır. Onay verilirse ambalajı açılmamış ve kullanılmamış standart ürünler, onay sırasında bildirilecek bir yeniden stoklama kesintisiyle iade alınabilir.</li>
+  <li id="havale-iadesi"><strong>Havale/EFT ile ödenen bedelin iadesi:</strong> Kurumsal ve yurt dışı alımlarda havale/EFT ile ödenen bedelin iadesi, ödemenin geldiği banka hesabına havale/EFT ile yapılır (temsili).</li>
+  <li><strong>İade edilmeyen ürünler:</strong> Alıcıya özel konfigüre edilmiş, programlanmış veya üretilmiş ürünler ile "ikinci el – olduğu gibi" satılan ürünler.</li>
+</ul>
+
+<h2>C. Yurt dışı alıcılar</h2>
+<p>Yurt dışı teslimatlar DAP (Incoterms 2020) koşuluyla yapılır; varış ülkesindeki gümrük vergileri, ithalat vergileri ve masrafları alıcıya aittir. Ayıp bildirimi B bölümündeki sürelerle yapılır. Satıcı kaynaklı bir hata yoksa iade navlunu, ihracat ve ithalat formaliteleri alıcıya aittir. Varış ülkesinde ödenen vergi ve harçlar satıcı tarafından iade edilmez.</p>
+
+<h2>D. İkinci el ürünler</h2>
+<p>"İkinci el – test edildi" ve "ikinci el – olduğu gibi" tanımları ile bu ürünlere özgü garanti koşulları <a href="/tr/yasal/garanti">Garanti Koşulları</a> sayfasındadır. Tüketicilerin cayma ve ayıplı mal hakları ikinci el ürünlerde de saklıdır.</p>
+{% endblock %}

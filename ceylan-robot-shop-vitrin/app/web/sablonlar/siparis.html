@@ -1,0 +1,117 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import ikon, parca_kodlari, tutar_gosterimi with context %}
+{% block baslik %}{% if son_adim is defined and son_adim == 'siparis_alindi' %}{{ t('siparis.alindi_baslik', no=siparis.no) }}{% else %}{{ t('siparis.baslik', no=siparis.no) }}{% endif %}{% endblock %}
+{% block icerik %}
+{% macro adres(a) %}
+<address>{{ a.ad_soyad }}<br>{{ a.satir1 }}{% if a.satir2 %}<br>{{ a.satir2 }}{% endif %}<br>{% if a.posta_kodu %}{{ a.posta_kodu }} {% endif %}{{ a.sehir }} / {{ a.ulke }}{% if a.telefon %}<br>{{ a.telefon }}{% endif %}</address>
+{% endmacro %}
+<section class="siparis">
+  {% if adim %}{% include "_adimlar.html" %}{% endif %}
+  {% if hata_kodu %}
+  <div class="form-hata-ozet" role="alert" data-e2e="odeme-hata" data-kod="{{ hata_kodu }}">
+    <p>{{ ikon('uyari') }} {{ t('hata_kodu.' ~ hata_kodu) }}</p>
+    <p><a class="dugme" href="/{{ dil }}/odeme/{{ siparis.no }}/kart">{{ t('siparis.tekrar_dene') }}</a></p>
+  </div>
+  {% endif %}
+  {% if siparis.durum == 'odendi' %}<p class="basari basari-buyuk" role="status">{{ ikon('kontrol', 'ikon-24') }}<span>{{ t('siparis.tesekkur') }}</span></p>{% endif %}
+  {% if siparis.durum == 'iptal' %}<p class="uyari" role="alert">{{ t('siparis.iptal_notu') }}</p>{% endif %}
+  {% if siparis.durum == 'suresi_doldu' %}<p class="uyari" role="alert" data-e2e="suresi-doldu">{{ t('siparis.suresi_doldu_notu') }}</p>{% endif %}
+  {% if son_adim == 'siparis_alindi' %}<h1>{{ t('siparis.alindi_baslik', no=siparis.no) }}</h1>
+  {% else %}<h1>{% if adim %}{{ t('odeme.adim_' ~ ('onay' if adim == 4 else 'odeme')) }} <span class="baslik-ek">· {% endif %}{{ t('siparis.baslik', no=siparis.no) }}{% if adim %}</span>{% endif %}</h1>{% endif %}
+  <p class="siparis-ust">{{ t('siparis.durum_etiket') }}: <strong class="rozet durum-rozeti durum-{{ siparis.durum }}" data-e2e="siparis-durum" data-durum="{{ siparis.durum }}">{{ t('siparis_durum.' ~ siparis.durum) }}</strong>
+    {% if siparis.kart_son4 %}<span class="siparis-kart">{{ t('siparis.kart', son4=siparis.kart_son4) }}</span>{% endif %}</p>
+  {% set havale = siparis.odeme_yontemi == 'havale' %}
+  <p class="siparis-yontem">{{ t('siparis.odeme_yontemi') }}: <strong>{{ t('odeme.yontem_' ~ siparis.odeme_yontemi) }}</strong></p>
+  {#- G3j madde 15: ödenmiş siparişte belge: kartla ödenende "Sipariş özeti (yazdır)" (bu sayfa) ve fatura notu #}
+  {% set odenmis = siparis.durum in ('odendi', 'hazirlaniyor', 'kargoda', 'teslim') %}
+  {% if odenmis %}<p class="siparis-belge">{{ ikon('dosya', 'ikon-16') }} {% if not havale %}<a href="/{{ dil }}/siparis/{{ siparis.no }}" data-e2e="belge-ozet-onay">{{ t('hesap.belge_ozet') }}</a> · {% endif %}<span data-e2e="fatura-eposta">{{ t('siparis.fatura_eposta') }}</span></p>{% endif %}
+  {% if siparis.musteri_po %}<p class="siparis-po">{{ t('siparis.po') }}: <strong class="parca-no">{{ siparis.musteri_po }}</strong></p>{% endif %}
+  {% if havale and siparis.durum == 'odeme_bekliyor' and siparis.odeme_son_tarih %}
+  {# G3g madde 4: havale ödemesi bu tarihe kadar beklenir; sonra stok ayırması bırakılır ("süresi doldu") #}
+  <p class="siparis-son-tarih" data-e2e="odeme-son-tarih">{{ ikon('bilgi', 'ikon-16') }} <strong>{{ t('siparis.odeme_son_tarih', tarih=tarih_tz(siparis.odeme_son_tarih, siparis.teslimat_ulkesi)) }}</strong> · {{ t('siparis.son_tarih_notu') }}</p>
+  {% endif %}
+  {% if siparis.durum == 'odeme_bekliyor' and not hata_kodu and not havale %}<p><a class="dugme" href="/{{ dil }}/odeme/{{ siparis.no }}/kart">{{ t('siparis.odemeye_don') }}</a></p>{% endif %}
+  {% if havale and siparis.durum == 'odeme_bekliyor' %}
+  {# G3e madde 15: havale/EFT — temsili banka bilgisi ve proforma özeti; sayfa yazdırılabilir (CSS @media print) #}
+  <section class="proforma" data-e2e="proforma" aria-labelledby="proforma-baslik">
+    <h2 id="proforma-baslik">{{ ikon('dosya', 'ikon-16') }} {{ t('proforma.baslik') }}</h2>
+    <p class="alan-ipucu">{{ t('proforma.aciklama') }}</p>
+    <dl class="proforma-banka">
+      <dt>{{ t('proforma.alici') }}</dt><dd>{{ satici_unvan }}</dd>
+      <dt>{{ t('proforma.banka') }}</dt><dd>{{ t('proforma.banka_deger') }}</dd>
+      {#- G3i madde 7: alıcının para birimine göre tek hesap: TL siparişte TL IBAN; EUR siparişte (G3g madde 17) EUR IBAN
+         ve SWIFT/BIC (temsili) #}
+      {% if siparis.para_birimi == 'TRY' %}
+      <dt>IBAN (TL)</dt><dd class="parca-no">{{ t('proforma.iban_deger') }}</dd>
+      {% else %}
+      <dt>IBAN (EUR)</dt><dd class="parca-no">{{ t('proforma.iban_eur_deger') }}</dd>
+      <dt>SWIFT/BIC</dt><dd class="parca-no">{{ t('proforma.swift_deger') }}</dd>
+      {% endif %}
+      <dt>{{ t('proforma.aciklama_satiri') }}</dt><dd class="parca-no">{{ siparis.no }}</dd>
+      <dt>{{ t('proforma.tutar') }}</dt><dd class="tutar">{{ para(siparis.toplam, siparis.para_birimi) }}{% if siparis.teslim_yontemi == 'yurtdisi_dap' %} <small class="tutar-yalniz-mal" data-e2e="tutar-yalniz-mal">{{ t('proforma.tutar_yalniz_mal') }}</small>{% endif %}</dd>
+      {% if siparis.teslim_yontemi == 'yurtdisi_dap' %}<dt>{{ t('proforma.navlun') }}</dt><dd>{{ t('proforma.navlun_deger') }}</dd>{% endif %}
+      {% if siparis.odeme_son_tarih %}<dt>{{ t('proforma.son_tarih') }}</dt><dd>{{ t('siparis.odeme_son_tarih', tarih=tarih_tz(siparis.odeme_son_tarih, siparis.teslimat_ulkesi)) }}</dd>{% endif %}
+    </dl>
+    {#- G3m madde 23: EUR (uluslararası) havalede banka masrafı talimatı. G3m madde 24: DAP navlun / ithalat KDV notları
+       yalnız sipariş özetinde (_siparis_tutar.html); burada tekrar yok #}
+    {% if siparis.para_birimi != 'TRY' %}<p class="not" data-e2e="banka-masraf">{{ t('odeme.banka_masraf') }}</p>{% endif %}
+    <p class="not">{{ t('proforma.not') }} <a href="/{{ dil }}/hesabim/siparis/{{ siparis.no }}/proforma" data-e2e="proforma-belge-bag">{{ ikon('dosya', 'ikon-16') }} {{ t('proforma.belge_bag') }}</a></p>
+    <p class="js-goster"><button type="button" class="dugme ikincil dugme-kucuk" data-yazdir hidden>{{ t('proforma.yazdir') }}</button></p>
+  </section>
+  {% endif %}
+  <div class="odeme-duzen">
+    <div class="odeme-ana">
+      <table class="tablo sepet-tablo siparis-kalemleri">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('sepet.urun') }}</th>
+            <th scope="col" class="sayi">{{ t('sepet.adet') }}</th><th scope="col" class="sayi">{{ t('siparis.net') }}</th>
+            <th scope="col" class="sayi">{{ t('siparis.kdv') }}</th><th scope="col" class="sayi">{{ t('siparis.brut') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for k in siparis.kalemler %}
+          <tr>
+            {% set u = urunler.get(k.urun_id) %}
+            <td class="kalem-urun"><span class="kalem-ad">{{ urun_ad(k.urun_id, k.ad) }}</span>{% if u %}<span class="kalem-kodlar">{{ parca_kodlari(u) }}</span>{% else %}<span class="parca-no"><span class="gizli">{{ t('siparis.sku') }}: </span>{{ k.sku }}</span>{% endif %}{% if u and siparis.durum in ('odeme_bekliyor', 'odendi', 'hazirlaniyor') %}<span class="not kalem-teslim">{{ siparis_teslim(u, siparis) }}</span>{% elif k.tedarik_teyit %}<span class="not">{{ t('sepet.tedarik_teyit') }}</span>{% endif %}</td>
+            <td class="sayi" data-etiket="{{ t('sepet.adet') }}">{{ k.adet }}</td>
+            {% if kalem_eur %}{% set ke = kalem_eur[loop.index0] %}
+            <td class="sayi" data-etiket="{{ t('siparis.net') }}">{{ tutar_gosterimi(ke.net, ikincil_kisa=true) }}</td>
+            <td class="sayi" data-etiket="{{ t('siparis.kdv') }}">{{ tutar_gosterimi(ke.kdv, e2e=false, ikincil_kisa=true) }}</td>
+            <td class="sayi" data-etiket="{{ t('siparis.brut') }}">{{ tutar_gosterimi(ke.brut, e2e=false, ikincil_kisa=true) }}</td>
+            {% else %}
+            <td class="sayi" data-etiket="{{ t('siparis.net') }}">{{ para(k.net, siparis.para_birimi) }}</td>
+            <td class="sayi" data-etiket="{{ t('siparis.kdv') }}">{{ para(k.kdv, siparis.para_birimi) }}</td>
+            <td class="sayi" data-etiket="{{ t('siparis.brut') }}">{{ para(k.brut, siparis.para_birimi) }}</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+        {#- G3k madde 16: kalem tutarları ile genel toplam arasındaki fark (ara toplam + kargo + KDV) tablonun altında #}
+        {#- fix 1 m-6: kalemler € ana gösterimdeyse (kurumsal TR) toplamlar da € ana (sabitlenen kurla), ₺ tahsilat ikincil #}
+        {% macro tt(x) %}{% if kalem_eur and siparis.kur %}{{ para(x / siparis.kur, 'EUR') }} <small class="fiyat-ikincil">≈ {{ para(x, siparis.para_birimi) }}</small>{% else %}{{ para(x, siparis.para_birimi) }}{% endif %}{% endmacro %}
+        {#- G3m madde 24: ihracat (DAP) siparişinde tutar özeti yalnız yandaki sipariş özetinde (tekrar yok) #}
+        {% if siparis.teslim_yontemi != 'yurtdisi_dap' %}
+        <tfoot data-e2e="kalem-toplam">
+          <tr><th scope="row" colspan="4">{{ t('tutar.ara_toplam') }}</th><td class="sayi">{{ tt(siparis.ara_toplam) }}</td></tr>
+          <tr><th scope="row" colspan="4">{{ t('tutar.kargo') }}</th><td class="sayi">{{ tt(siparis.kargo) }}</td></tr>
+          <tr><th scope="row" colspan="4">{{ t('tutar.ihracat_istisnasi' if siparis.ihracat_istisnasi else 'tutar.kdv') }}</th><td class="sayi">{{ tt(siparis.kdv) }}</td></tr>
+          <tr class="toplam"><th scope="row" colspan="4">{{ t('tutar.toplam') }}</th><td class="sayi">{{ tt(siparis.toplam) }}</td></tr>
+        </tfoot>
+        {% endif %}
+      </table>
+      <div class="adresler">
+        <div class="adres-kart"><h2>{{ t('siparis.teslimat') }}</h2>{{ adres(siparis.teslimat_adresi) }}</div>
+        <div class="adres-kart"><h2>{{ t('siparis.fatura') }}</h2>{{ adres(siparis.fatura_adresi) }}</div>
+        <div class="adres-kart"><h2>{{ t('siparis.teslim_yontemi') }}</h2><p>{{ ikon('kamyon', 'ikon-16') }} {{ t('odeme.teslim_' ~ siparis.teslim_yontemi) }}</p></div>
+      </div>
+      <p><a href="/{{ dil }}/hesabim">{{ t('siparis.hesabim') }}</a></p>
+    </div>
+    <aside class="siparis-ozeti" aria-labelledby="ozet-baslik">
+      <h2 id="ozet-baslik">{{ t('odeme.ozet') }}</h2>
+      {% include "_fatura_bilgisi.html" %}
+      {% include "_siparis_tutar.html" %}
+    </aside>
+  </div>
+</section>
+{% endblock %}

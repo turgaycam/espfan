@@ -1,0 +1,11 @@
+[
+  {"_id": "6a26d4fdd01723cd75a5003e", "name": "Endüstriyel Robotlar", "path": "12", "level": 0, "sortOrder": 0, "isActive": true, "erpId": 12},
+  {"_id": "6a26d4fdd01723cd75a50041", "name": "KUKA", "parentId": "6a26d4fdd01723cd75a5003e", "path": "12.41", "level": 1, "sortOrder": 0, "isActive": true, "erpId": 41},
+  {"_id": "6a26d4fdd01723cd75a5004d", "name": "KR C4", "parentId": "6a26d4fdd01723cd75a50041", "path": "12.41.243", "level": 2, "sortOrder": 0, "isActive": true, "erpId": 243},
+  {"_id": "6a26d4fcd01723cd75a4fc9f", "name": "Elektrik ve Elektronik", "path": "10", "level": 0, "sortOrder": 0, "isActive": true, "erpId": 10},
+  {"_id": "6a26d4fcd01723cd75a4fcb4", "name": "KONTROL SISTEMLERI", "parentId": "6a26d4fcd01723cd75a4fc9f", "path": "10.18", "level": 1, "sortOrder": 0, "isActive": true, "erpId": 18},
+  {"_id": "6a26d4fcd01723cd75a4fcbd", "name": "ROLELER/ZAMANLAYICILAR", "parentId": "6a26d4fcd01723cd75a4fcb4", "path": "10.18.75", "level": 2, "sortOrder": 0, "isActive": true, "erpId": 75},
+  {"_id": "6a8fd25892da5f9d69e43233", "name": "GÜÇ KAYNA�\udc9eI", "parentId": "6a47b8e507f6d356d05bee21", "path": "511", "level": 0, "sortOrder": 0, "isActive": true, "erpId": 511},
+  {"_id": "6a8fd25892da5f9d69e4ff01", "name": "AC/DC DÖNÜŞTÜRÜCÜLER", "parentId": "6a8fd25892da5f9d69e43233", "path": "511.512", "level": 1, "sortOrder": 0, "isActive": true, "erpId": 512},
+  {"_id": "6a8fd25892da5f9d69e4ff02", "name": null, "path": "511.513", "level": 1, "isActive": true, "erpId": 513}
+]

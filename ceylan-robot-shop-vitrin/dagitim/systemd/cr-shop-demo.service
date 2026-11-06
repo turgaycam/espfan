@@ -1,0 +1,31 @@
+[Unit]
+Description=Ceylan Robot satış sitesi mockup'ı (FastAPI, port 3030)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=crshop
+Group=crshop
+EnvironmentFile=/opt/cr-shop-demo/ortam
+Environment=PYTHONDONTWRITEBYTECODE=1
+WorkingDirectory=/opt/cr-shop-demo/current
+ExecStart=/opt/cr-shop-demo/current/venv/bin/uvicorn --factory app.web.asgi:uygulama --host 0.0.0.0 --port 3030 --workers 1
+Restart=always
+RestartSec=3
+MemoryMax=600M
+UMask=0027
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/cr-shop-demo/veri /opt/cr-shop-demo/yedek
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

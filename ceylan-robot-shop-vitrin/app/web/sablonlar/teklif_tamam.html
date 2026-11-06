@@ -1,0 +1,50 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import ikon with context %}
+{% block baslik %}{{ t('teklif.tamam_baslik') }}{% endblock %}
+{% block icerik %}
+<section class="teklif teklif-tamam">
+  <h1>{{ t('teklif.tamam_baslik') }}</h1>
+  <p class="basari basari-buyuk" role="status">{{ ikon('kontrol') }}<span>{% if no and teklif and teklif.aciliyet == 'acil' %}{{ t('teklif.tamam_metin_acil', no=no) }}{% elif no %}{{ t('teklif.tamam_metin', no=no) }}{% else %}{{ t('teklif.tamam_numarasiz') }}{% endif %}</span></p>
+  {% if no %}<p class="teklif-no-satiri"><span class="teklif-no-etiket">{{ t('teklif.no') }}</span> <strong class="parca-no teklif-no" data-e2e="teklif-no">{{ no }}</strong></p>{% endif %}
+  {#- G3i madde 17: gönderilen iletişim ve vergi bilgileri, PO ve mesajın ilk 200 karakteri #}
+  {% if teklif %}
+  {% include "_teklif_iletisim.html" %}
+  {% include "_teklif_ozeti.html" %}
+  {#- G3j madde 16: sepetten gelen teklifte fiyat notu; sepet hâlâ doluysa "Sepeti boşalt" (POST, CSRF) #}
+  {% if teklif.kalemler %}
+  <p class="not" data-e2e="teklif-fiyat-notu">{{ t('teklif.fiyatlar_yanitta') }}</p>
+  {% if sepet_adet %}
+  <form method="post" action="/{{ dil }}/sepet/bosalt" class="sepet-bosalt">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <p class="alan-ipucu">{{ t('teklif.sepet_hala_dolu') }}</p>
+    {#- G3l madde 16: JS'siz iki adım: "Sepeti boşalt" onayı açar, gönderim "Evet, sepeti boşalt" ile (aynı POST rotası) #}
+    <details class="bosalt-onay">
+      <summary class="dugme ikincil dugme-kucuk">{{ ikon('carpi', 'ikon-16') }} {{ t('teklif.sepeti_bosalt') }}</summary>
+      <p class="alan-ipucu">{{ t('teklif.bosalt_onay_metni') }}</p>
+      <button type="submit" class="dugme dugme-kucuk" data-e2e="sepeti-bosalt">{{ t('teklif.bosalt_evet') }}</button>
+    </details>
+  </form>
+  {% endif %}
+  {% endif %}
+  {#- G3j madde 1: parça kodu katalogda tam eşleştiyse ürün(ler), alınabilir stok ve doğrudan sipariş bağlantısı #}
+  {% if eslesmeler %}
+  <section class="katalog-eslesme" data-e2e="katalog-eslesme" aria-label="{{ t('teklif.katalogda_bulundu') }}">
+    {% macro stok_metni(u) %}{% if u.stok > 0 and musait(u) > 0 %}{{ t('teklif.eslesme_stokta', adet=musait(u)) }}{% else %}{{ t('teklif.eslesme_stok_yok') }}{% endif %}{% endmacro %}
+    {% if eslesmeler | length == 1 %}{% set u = eslesmeler[0] %}
+    <p>{{ ikon('kontrol', 'ikon-16') }} {{ t('teklif.katalogda_bulundu') }} <a href="/{{ dil }}/urun/{{ u.id }}">{{ urun_ad(u.id, u.ad) }}</a> ({{ stok_metni(u) }})</p>
+    {% if u.stok > 0 and musait(u) > 0 and not u.teklif_zorunlu %}<p><a class="dugme" href="/{{ dil }}/urun/{{ u.id }}" data-e2e="dogrudan-siparis">{{ t('teklif.dogrudan_siparis') }}</a></p>{% endif %}
+    {% else %}
+    <p>{{ ikon('kontrol', 'ikon-16') }} {{ t('teklif.katalogda_n', n=eslesmeler | length) }}</p>
+    <ul>{% for u in eslesmeler %}<li><a href="/{{ dil }}/urun/{{ u.id }}">{{ urun_ad(u.id, u.ad) }}</a> <span class="stok-kodu">{{ t('urun.ayni_parca_stok_kodu', sku=u.sku) }}</span> ({{ stok_metni(u) }})</li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+  {% endif %}
+  {% endif %}
+  <p class="alan-ipucu" data-e2e="acil-not">{{ t('teklif.acil_oncelik') }}</p>
+  <p class="teklif-tamam-baglar">
+    <a class="dugme ikincil" href="/{{ dil }}/">{{ t('teklif.ana_sayfa') }}</a>
+    {% if musteri and teklif and teklif.musteri_id == musteri.id %}<a class="dugme ikincil" href="/{{ dil }}/hesabim/teklif/{{ teklif.no }}">{{ t('teklif.detay_bag') }}</a>
+    {% elif musteri %}<a class="dugme ikincil" href="/{{ dil }}/hesabim">{{ t('siparis.hesabim') }}</a>{% endif %}
+  </p>
+</section>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import ikon with context %}
+{% block baslik %}{{ t('teklif.baslik') }}{% endblock %}
+{% block icerik %}
+{% macro alan(ad, etiket, tip="text", zorunlu=False, ek="", aciklama="") %}
+<div class="alan{% if hatalar.get(ad) %} hatali{% endif %}">
+  <label for="{{ ad }}">{{ t(etiket) }}{% if zorunlu %} <span class="zorunlu" aria-hidden="true">*</span>{% endif %}</label>
+  <input id="{{ ad }}" name="{{ ad }}" type="{{ tip }}" value="{{ alanlar[ad] }}"{% if zorunlu %} required aria-required="true"{% endif %}{% if ek %} {{ ek|safe }}{% endif %}{% if hatalar.get(ad) %} aria-invalid="true"{% endif %}{% if aciklama or hatalar.get(ad) %} aria-describedby="{{ aciklama }}{% if aciklama and hatalar.get(ad) %} {% endif %}{% if hatalar.get(ad) %}hata-{{ ad }}{% endif %}"{% endif %}>
+  {% if hatalar.get(ad) %}<p class="alan-hata" id="hata-{{ ad }}">{{ t(hatalar[ad]) }}</p>{% endif %}
+</div>
+{% endmacro %}
+<section class="teklif">
+  <h1>{{ t('teklif.baslik') }}</h1>
+  <p class="teklif-giris">{{ t('teklif.aciklama') }} {{ t('teklif.acil') }} <a href="#hizli-talep">{{ t('teklif.hizli_talep') }}</a>.</p>
+
+  {% if urun %}
+  <article class="teklif-urun" aria-labelledby="teklif-urun-ad">
+    <img class="teklif-urun-gorsel" src="{{ gorsel_adresi(urun) }}" data-yedek="{{ yer_tutucu(urun.kok_kategori_ad) }}" alt="" width="96" height="72">
+    <div class="teklif-urun-govde">
+      <p class="teklif-urun-etiket">{{ t('teklif.urun_ozet') }}</p>
+      <h2 class="teklif-urun-ad" id="teklif-urun-ad"><a href="/{{ dil }}/urun/{{ urun.id }}">{{ urun_ad(urun.id, urun.ad) }}</a></h2>
+      <p class="teklif-urun-kod"><span class="teklif-urun-kod-etiket">{{ t('urun.parca_no') }}</span> <span class="parca-no">{{ urun.uretici_kodu or urun.sku }}</span>
+        {%- if urun.uretici_kodu %} · <span class="teklif-urun-kod-etiket">{{ t('urun.stok_kodu') }}</span> <span class="parca-no">{{ urun.sku }}</span>{% endif %}</p>
+      {% if urun.teklif_zorunlu %}<p class="teklif-urun-not"><span class="rozet rozet-teklif">{{ t('urun.fiyat_teklifle_kdv' if urun.kdv_gecersiz else 'urun.fiyat_teklifle') }}</span></p>{% endif %}
+    </div>
+  </article>
+  {% endif %}
+
+  {% if genel_hata %}
+  {# G3a N-1b: hız sınırı aşıldı; form girdisi korunur, ne zaman yeniden denenebileceği yazılır #}
+  <div class="form-hata-ozet" role="alert" tabindex="-1" data-hata-ozet data-e2e="teklif-cok-deneme">
+    <p>{{ t(genel_hata) }}</p>
+    {% if telefon %}<p><a href="tel:{{ telefon_tel }}">{{ ikon('telefon', 'ikon-16') }} {{ telefon }}</a></p>{% endif %}
+  </div>
+  {% elif hata_ozeti %}
+  <div class="form-hata-ozet" role="alert" tabindex="-1" data-hata-ozet>
+    <p>{{ t('odeme.form_hatali') }}</p>
+    <ul>{% for h in hata_ozeti %}<li><a href="#{{ h.hedef }}">{{ t(h.etiket) }}: {{ t(h.hata) }}</a></li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  <p class="demo-uyari bilgi-kutu" role="note">{{ ikon('bilgi') }}<span>{{ t('odeme.gercek_veri_uyari') }}</span></p>
+
+  <form method="post" action="/{{ dil }}/teklif" class="form teklif-formu" novalidate data-tek-gonderim>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if urun %}<input type="hidden" name="urun_id" value="{{ urun.id }}">{% endif %}
+    {% if alanlar.kaynak %}<input type="hidden" name="kaynak" value="{{ alanlar.kaynak }}">{% endif %}
+    <p class="alan-ipucu teklif-zorunlu-not">{{ t('teklif.zorunlu_not') }}</p>
+
+    <fieldset class="bolum">
+      <legend>{{ ikon('kullanici', 'ikon-16') }} {{ t('teklif.iletisim') }}</legend>
+      {{ alan('ad', 'teklif.ad', zorunlu=True, ek='maxlength="%d" autocomplete="name"' % sinirlar.ad) }}
+      {{ alan('firma', 'teklif.firma', ek='maxlength="%d" autocomplete="organization"' % sinirlar.firma) }}
+      {# G3e madde 17: girişli kurumsal müşteride profilden dolu #}
+      {#- G3g madde 15: ülke TR değilse gizli (CSS :has); JS'siz / :has'siz yedek: görünür, "(yalnız Türkiye)", zorunlu değil #}
+      {#- G3i madde 15: "(yalnız Türkiye)" bir başlık altında #}
+      <fieldset class="yalniz-tr" data-e2e="teklif-tr-vergi">
+        <legend>{{ t('teklif.tr_vergi_baslik') }}</legend>
+        <p class="alan-ipucu yalniz-tr-etiket">{{ t('teklif.yalniz_tr') }}</p>
+        <div class="alan-cifti">
+          {{ alan('vkn', 'teklif.vkn', ek='maxlength="%d" inputmode="numeric" autocomplete="off"' % sinirlar.vkn) }}
+          {{ alan('vergi_dairesi', 'teklif.vergi_dairesi', ek='maxlength="%d" autocomplete="off"' % sinirlar.vergi_dairesi) }}
+        </div>
+      </fieldset>
+      <p class="alan-ipucu iletisim-ipucu" id="ipucu-iletisim">{{ t('teklif.iletisim_ipucu') }}</p>
+      {{ alan('eposta', 'teklif.eposta', tip='email', ek='maxlength="%d" autocomplete="email" spellcheck="false"' % sinirlar.eposta, aciklama='ipucu-iletisim') }}
+      {{ alan('telefon', 'teklif.telefon', tip='tel', zorunlu=telefon_zorunlu, ek='maxlength="%d" autocomplete="tel"' % sinirlar.telefon) }}
+      <div class="alan{% if hatalar.get('ulke') %} hatali{% endif %}">
+        <label for="ulke">{{ t('teklif.ulke') }} <span class="zorunlu" aria-hidden="true">*</span></label>
+        <select id="ulke" name="ulke" class="ulke-secimi" autocomplete="country" aria-required="true"{% if hatalar.get('ulke') %} aria-invalid="true" aria-describedby="hata-ulke"{% endif %}>
+          {% if alanlar.ulke not in ulke_secenekleri %}<option value="" selected>{{ t('nav.ulke_sec') }}</option>{% endif %}
+          {% for u in ulke_secenekleri %}<option value="{{ u }}"{% if u == alanlar.ulke %} selected{% endif %}>{{ t('ulke.' ~ u) }}</option>{% endfor %}
+        </select>
+        {% if hatalar.get('ulke') %}<p class="alan-hata" id="hata-ulke">{{ t(hatalar['ulke']) }}</p>{% endif %}
+      </div>
+      {{ alan('vat_id', 'teklif.vat_id', ek='maxlength="%d" autocomplete="off" spellcheck="false"' % sinirlar.vat_id) }}
+      <p class="alan-ipucu">{{ t('teklif.vat_ipucu') }}</p>
+      {#- G3j madde 16: DAP navlun teklifi için teslim adresi / posta kodu (isteğe bağlı); ülke TR iken gizli (CSS :has),
+         :has'siz tarayıcıda görünür kalır (zorunlu değil) #}
+      <div class="alan yalniz-yd{% if hatalar.get('teslim_adresi') %} hatali{% endif %}" data-e2e="teklif-teslim-adresi">
+        <label for="teslim_adresi">{{ t('teklif.teslim_adresi') }}</label>
+        <input id="teslim_adresi" name="teslim_adresi" value="{{ alanlar.teslim_adresi }}" maxlength="{{ sinirlar.teslim_adresi }}" autocomplete="shipping street-address" aria-describedby="ipucu-teslim-adresi{% if hatalar.get('teslim_adresi') %} hata-teslim_adresi{% endif %}"{% if hatalar.get('teslim_adresi') %} aria-invalid="true"{% endif %}>
+        <p class="alan-ipucu" id="ipucu-teslim-adresi">{{ t('teklif.teslim_adresi_ipucu') }}</p>
+        {% if hatalar.get('teslim_adresi') %}<p class="alan-hata" id="hata-teslim_adresi">{{ t(hatalar['teslim_adresi']) }}</p>{% endif %}
+      </div>
+    </fieldset>
+
+    <fieldset class="bolum">
+      <legend>{{ ikon('dosya', 'ikon-16') }} {{ t('teklif.talep') }}</legend>
+      {% if kalemler %}
+      {# G3g madde 2: sepetten gelen kalemler — düzenlenebilir satırlar (en çok 20); 0 adetli satır gönderilmez #}
+      {% if atlanan %}<p class="uyari" role="alert" data-e2e="kalem-atlandi">{{ t('teklif.kalem_atlandi', adet=atlanan | length, azami=kalem_azami) }} {% for k in atlanan %}{{ k.adet }} × {{ urun_metin(k.urun_id, k.ad) }} ({{ k.kod }}){% if not loop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+      <div class="teklif-kalemler{% if hatalar.get('kalemler') %} hatali{% endif %}" id="kalemler" data-e2e="teklif-kalemler">
+        <p class="teklif-urun-etiket" id="teklif-kalemler-baslik">{{ t('teklif.kalemler') }}</p>
+        <div class="tablo-sar">
+          <table class="tablo teklif-kalem-tablo" aria-labelledby="teklif-kalemler-baslik">
+            <thead><tr><th scope="col">{{ t('sepet.urun') }}</th><th scope="col" class="sayi">{{ t('sepet.adet') }}</th></tr></thead>
+            <tbody>
+              {% for k in kalemler %}
+              <tr data-e2e="teklif-kalem">
+                <td><input type="hidden" name="kalem_urun" value="{{ k.urun_id }}"><a href="/{{ dil }}/urun/{{ k.urun_id }}">{{ urun_ad(k.urun_id, k.ad) }}</a> <span class="parca-no">{{ k.kod }}</span></td>
+                <td class="sayi"><label class="gizli" for="kalem-adet-{{ loop.index }}">{{ t('sepet.adet') }}: {{ urun_metin(k.urun_id, k.ad) }}</label><input id="kalem-adet-{{ loop.index }}" type="number" name="kalem_adet" min="0" max="9999" step="1" inputmode="numeric" class="adet-alani" value="{{ k.adet }}"{% if hatalar.get('kalemler') %} aria-invalid="true" aria-describedby="hata-kalemler"{% endif %}></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="alan-ipucu">{{ t('teklif.kalemler_ipucu', azami=kalem_azami) }}</p>
+        {% if hatalar.get('kalemler') %}<p class="alan-hata" id="hata-kalemler">{{ t(hatalar['kalemler']) }}</p>{% endif %}
+      </div>
+      {% else %}
+      {% if not urun %}{{ alan('parca_kodu', 'teklif.parca_kodu', ek='maxlength="%d" autocomplete="off" spellcheck="false"' % sinirlar.parca_kodu) }}{% endif %}
+      {{ alan('adet', 'teklif.adet', tip='number', zorunlu=True, ek='min="1" max="9999" step="1" inputmode="numeric" class="adet-alani"') }}
+      {% endif %}
+      <div class="alan-cifti">
+        {{ alan('istenen_tarih', 'teklif.istenen_tarih', tip='date', ek='maxlength="10"') }}
+        {{ alan('hedef_fiyat', 'teklif.hedef_fiyat', ek='maxlength="%d" autocomplete="off"' % sinirlar.hedef_fiyat) }}
+      </div>
+      {#- G3i madde 6: isteğe bağlı satın alma (PO) numarası #}
+      {#- G3n madde 9: tarayıcı 40 karakterde sessizce kırpmasın (sınır 200); sunucu "En çok 40 karakter" hatası verir #}
+      {{ alan('musteri_po', 'odeme.musteri_po', ek='maxlength="200" autocomplete="off" spellcheck="false"') }}
+      <div class="alan{% if hatalar.get('mesaj') %} hatali{% endif %}">
+        <label for="mesaj">{{ t('teklif.mesaj') }} <span class="zorunlu" aria-hidden="true">*</span></label>
+        <textarea id="mesaj" name="mesaj" rows="6" maxlength="{{ mesaj_azami }}" required aria-required="true" aria-describedby="ipucu-mesaj{% if hatalar.get('mesaj') %} hata-mesaj{% endif %}"{% if hatalar.get('mesaj') %} aria-invalid="true"{% endif %}>{{ alanlar.mesaj }}</textarea>
+        <p class="alan-ipucu" id="ipucu-mesaj">{{ t('teklif.mesaj_ipucu') }}</p>
+        {% if hatalar.get('mesaj') %}<p class="alan-hata" id="hata-mesaj">{{ t(hatalar['mesaj']) }}</p>{% endif %}
+      </div>
+    </fieldset>
+
+    {% if kvkk_gerekli %}
+    <div class="alan onay-kutusu{% if hatalar.get('kvkk_onay') %} hatali{% endif %}">
+      <label class="secim"><input type="checkbox" id="kvkk_onay" name="kvkk_onay" value="1"{% if alanlar.kvkk_onay == '1' %} checked{% endif %} aria-required="true"{% if hatalar.get('kvkk_onay') %} aria-invalid="true" aria-describedby="hata-kvkk_onay"{% endif %}> <span>{{ t('teklif.kvkk_onay') }} <span class="zorunlu" aria-hidden="true">*</span></span></label>
+      <p class="alan-ipucu"><a href="/{{ dil }}/yasal/kvkk" target="_blank" rel="noopener">{{ ikon('dosya', 'ikon-16') }} {{ t('hesap.kvkk_bag') }}</a></p>
+      {% if hatalar.get('kvkk_onay') %}<p class="alan-hata" id="hata-kvkk_onay">{{ t(hatalar['kvkk_onay']) }}</p>{% endif %}
+    </div>
+    {% endif %}
+    <button type="submit" class="dugme dugme-buyuk" data-e2e="teklif-gonder">{{ t('teklif.gonder') }}</button>
+  </form>
+
+  {#- G3g madde 24: acil durum için 3 alanlı hızlı talep (telefonla dönüş); ana formdan sonra (alan adları çakışmaz) #}
+  <section class="bolum hizli-talep" id="hizli-talep" aria-labelledby="hizli-talep-baslik">
+    <h2 id="hizli-talep-baslik">{{ ikon('telefon', 'ikon-16') }} {{ t('teklif.hizli_talep') }}</h2>
+    <p class="alan-ipucu">{{ t('katalog.bos_teklif_metin') }}</p>
+    <form class="hizli-teklif" method="post" action="/{{ dil }}/teklif/hizli" novalidate data-tek-gonderim>
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="alan">
+        <label for="ht-parca">{{ t('teklif.parca_kodu') }}</label>
+        <input id="ht-parca" name="parca_kodu" value="{{ alanlar.parca_kodu }}" maxlength="100" required autocomplete="off" spellcheck="false">
+      </div>
+      <div class="alan">
+        <label for="ht-ad">{{ t('teklif.ad') }}</label>
+        <input id="ht-ad" name="ad" maxlength="120" required autocomplete="name">
+      </div>
+      <div class="alan">
+        <label for="ht-iletisim">{{ t('teklif.iletisim_alani') }}</label>
+        <input id="ht-iletisim" name="iletisim" maxlength="254" required autocomplete="tel" aria-describedby="ht-iletisim-ipucu">
+      </div>
+      {% include "_hizli_talep_ek.html" %}
+      <button class="dugme ikincil" type="submit">{{ t('teklif.hizli_gonder') }}</button>
+    </form>
+    {% if telefon %}<p class="alan-ipucu"><a href="tel:{{ telefon_tel }}">{{ ikon('telefon', 'ikon-16') }} {{ telefon }}</a></p>{% endif %}
+  </section>
+</section>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import metin_alani, ikon with context %}
+{% block baslik %}{{ t('hesap.kayit_baslik') }}{% endblock %}
+{% block icerik %}
+<h1>{{ t('hesap.kayit_baslik') }}</h1>
+{% include "_odeme_hesap_notu.html" %}
+<p class="uyari" role="note">{{ t('hesap.demo_parola_uyarisi') }}</p>
+{% if hatalar %}
+<div class="form-hata-ozet" role="alert" tabindex="-1" data-hata-ozet>
+  <p>{{ t('hesap.form_hatali') }}</p>
+  <ul>{% for alan, metin in hatalar.items() %}<li><a href="#{{ 'a-tip-' ~ (deger.tip or 'bireysel') if alan == 'tip' else 'a-' ~ alan }}">{{ metin }}</a></li>{% endfor %}</ul>
+</div>
+{% endif %}
+{# G3c madde 19: tipe ait alanlar <fieldset data-tipler> gruplarında; seçili tipe ait olmayan gruplar CSS :has() ile
+   (site.js yedeği: hidden) gizlenir. :has() desteklenmezse ve JS yoksa hepsi görünür; zorunluluk sunucuda tipe göredir. #}
+<form class="form kayit-formu" method="post" action="/{{ dil }}/kayit" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="sonraki" value="{{ sonraki }}">
+
+  <fieldset class="tip-secim{% if hatalar.tip %} hatali{% endif %}">
+    <legend>{{ t('hesap.tip_baslik') }}</legend>
+    {% for tip in ('bireysel', 'kurumsal', 'yurtdisi') %}
+    <label><input type="radio" id="a-tip-{{ tip }}" name="tip" value="{{ tip }}"{% if deger.tip == tip %} checked{% endif %} required>
+      <span>{{ t('hesap.tip_' ~ tip) }}<small>{{ t('hesap.tip_' ~ tip ~ '_aciklama') }}</small></span></label>
+    {% endfor %}
+  </fieldset>
+  {% if hatalar.tip %}<p class="alan-hata" id="h-tip">{{ hatalar.tip }}</p>{% endif %}
+
+  {{ metin_alani('ad', t('hesap.ad'), deger=deger.ad, hata=hatalar.ad, otomatik='name', zorunlu=true) }}
+  {{ metin_alani('eposta', t('hesap.eposta'), deger=deger.eposta, hata=hatalar.eposta, tur='email', otomatik='email', zorunlu=true) }}
+  {{ metin_alani('parola', t('hesap.parola'), hata=hatalar.parola, tur='password', ipucu=t('hesap.parola_ipucu'), otomatik='new-password', zorunlu=true) }}
+
+  <fieldset class="tip-alanlari" data-tipler="kurumsal">
+    <legend>{{ t('hesap.kurumsal_bilgiler') }} <span class="etiket-kosul">{{ t('hesap.yalniz_kurumsal') }}</span></legend>
+    {{ metin_alani('vergi_kimlik_no', t('hesap.vkn'), deger=deger.vergi_kimlik_no, hata=hatalar.vergi_kimlik_no, ipucu=t('hesap.vkn_ipucu'), uzunluk=11) }}
+    {{ metin_alani('vergi_dairesi', t('hesap.vergi_dairesi'), deger=deger.vergi_dairesi, hata=hatalar.vergi_dairesi) }}
+  </fieldset>
+
+  <fieldset class="tip-alanlari" data-tipler="yurtdisi">
+    <legend>{{ t('hesap.yurtdisi_bilgiler') }} <span class="etiket-kosul">{{ t('hesap.yalniz_yurtdisi') }}</span></legend>
+    <div class="alan{% if hatalar.ulke %} hatali{% endif %}">
+      <label for="a-ulke">{{ t('hesap.ulke') }}</label>
+      <select id="a-ulke" name="ulke" autocomplete="country"{% if hatalar.ulke %} aria-invalid="true" aria-describedby="h-ulke"{% endif %}>
+        {% for u in ulkeler %}{% if u != 'TR' %}<option value="{{ u }}"{% if deger.ulke == u %} selected{% endif %}>{{ t('ulke.' ~ u) }}</option>{% endif %}{% endfor %}
+      </select>
+      {% if hatalar.ulke %}<p class="alan-hata" id="h-ulke">{{ hatalar.ulke }}</p>{% endif %}
+    </div>
+    {{ metin_alani('vat_id', t('hesap.vat_id'), deger=deger.vat_id, hata=hatalar.vat_id, ipucu=t('hesap.vat_ipucu'), uzunluk=30) }}
+  </fieldset>
+
+  <div class="alan{% if hatalar.kvkk_onay %} hatali{% endif %}">
+    <label class="secim"><input type="checkbox" id="a-kvkk_onay" name="kvkk_onay" value="1"{% if deger.kvkk_onay %} checked{% endif %} required{% if hatalar.kvkk_onay %} aria-invalid="true" aria-describedby="h-kvkk_onay"{% endif %}> {{ t('hesap.kvkk_onay') }}</label>
+    <p class="alan-ipucu"><a href="/{{ dil }}/yasal/kvkk">{{ t('hesap.kvkk_bag') }}</a></p>
+    {% if hatalar.kvkk_onay %}<p class="alan-hata" id="h-kvkk_onay">{{ hatalar.kvkk_onay }}</p>{% endif %}
+  </div>
+  {#- G3g madde 15 / inceleme M-4: İYS (Türkiye ileti yönetim sistemi) onayı yalnız Türkiye'deki bireysel tipte
+     (yurt dışı ve kurumsal seçiliyken gizli; sunucu da yalnız bireyselde kaydeder), arayüz dilinden bağımsız #}
+  <div class="alan" data-tipler="bireysel">
+    <label class="secim"><input type="checkbox" id="a-iys_onay" name="iys_onay" value="1"{% if deger.iys_onay %} checked{% endif %}> {{ t('hesap.iys_onay') }} <span class="etiket-kosul">{{ t('hesap.yalniz_bireysel') }}</span></label>
+  </div>
+
+  <button class="dugme" type="submit" data-e2e="kayit-gonder">{{ t('hesap.kayit_ol') }}</button>
+  <p>{{ t('hesap.zaten_uye') }} <a href="/{{ dil }}/giris{% if sonraki %}?sonraki={{ sonraki | urlencode | replace('/', '%2F') }}{% endif %}">{{ t('hesap.giris_yap') }}</a></p>
+</form>
+{% endblock %}

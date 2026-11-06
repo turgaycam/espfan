@@ -1,0 +1,35 @@
+{# Oluşmuş siparişin tutar özeti (kart, sipariş). Değişken: siparis. Kur siparişte sabitlenmiş kurdur.
+   G3e madde 5: DAP siparişte navlun teklifle; "Kargo 0,00" yerine navlun satırı, toplam "Mal bedeli". #}
+{% set dap = siparis.teslim_yontemi == 'yurtdisi_dap' %}
+<dl class="tutar-ozeti">
+  {#- G3i madde 1: tek "Ara toplam (KDV hariç)" satırı (G3g madde 7: kurumsal TR onayında € ana, ₺ tahsilat ≈) #}
+  {% set ag = ara_gosterim if ara_gosterim is defined else none %}
+  {% if ag %}
+  <dt data-e2e="satir-eur-ara-toplam">{{ t('tutar.ara_toplam') }}</dt><dd class="tutar">{{ para(ag.tutar, ag.para) }} · ≈ {{ para(siparis.ara_toplam, siparis.para_birimi) }}</dd>
+  {% else %}
+  <dt>{{ t('tutar.ara_toplam') }}</dt><dd class="tutar">{{ para(siparis.ara_toplam, siparis.para_birimi) }}</dd>
+  {% endif %}
+  {% if dap %}
+  <dt data-e2e="satir-navlun">{{ t('tutar.navlun_teklif') }}</dt><dd>—</dd>
+  {% else %}
+  <dt>{{ t('tutar.kargo') }}</dt><dd class="tutar">{{ para(siparis.kargo, siparis.para_birimi) }}</dd>
+  {% endif %}
+  {% if siparis.ihracat_istisnasi %}
+  <dt data-e2e="satir-ihracat">{{ t('tutar.ihracat_istisnasi') }}</dt><dd class="tutar">{{ para(siparis.kdv, siparis.para_birimi) }}</dd>
+  {% else %}
+  {#- G3i madde 4: satırların KDV toplamı ile özet KDV'si arasındaki fark kargo KDV'sidir; iki satır #}
+  {% set kdv_urunler = siparis.kalemler | sum(attribute='kdv') %}
+  <dt data-e2e="satir-kdv">{{ t('tutar.kdv_urunler') }}</dt><dd class="tutar">{{ para(kdv_urunler, siparis.para_birimi) }}</dd>
+  <dt data-e2e="satir-kdv-kargo">{{ t('tutar.kdv_kargo') }}</dt><dd class="tutar">{{ para(siparis.kdv - kdv_urunler, siparis.para_birimi) }}</dd>
+  {% endif %}
+  <dt class="toplam">{{ t('tutar.mal_bedeli' if dap else 'tutar.toplam') }}</dt><dd class="toplam tutar">{{ para(siparis.toplam, siparis.para_birimi) }}{% if toplam_eur is defined and toplam_eur is not none %} · ≈ {{ para(toplam_eur, 'EUR') }}{% endif %}</dd>
+</dl>
+{% if dap %}
+<p class="not" data-e2e="not-dap">{{ t('tutar.dap_notu') }}</p>
+{#- G3g madde 13: navlun teklifi ve ithalat KDV'si (docs/hukuk-notlari.md) #}
+<p class="not" data-e2e="not-navlun">{{ t('tutar.navlun_notu') }}</p>
+<p class="not" data-e2e="not-ithalat">{{ t('tutar.ithalat_notu') }}</p>
+{% endif %}
+{% if siparis.ihracat_istisnasi %}{% set ihracat_fabrika = siparis.teslim_yontemi == 'fabrika' %}{% include "_ihracat_kdv.html" %}{% endif %}
+{% if ag %}<p class="not" data-e2e="not-tahsilat-try">{{ t('tutar.tahsilat_try_notu') }}</p>{% endif %}
+{% if siparis.kur %}<p class="kur-satiri">{{ t('siparis.kur', kur=kur_sayi(siparis.kur), tarih=tarih(siparis.kur_tarihi) if siparis.kur_tarihi else '') }}</p>{% endif %}

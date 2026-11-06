@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 72" width="400" height="300" role="img" aria-label="Robot kontrol ünitesi">
+  <rect width="96" height="72" fill="#ebe7db"/>
+  <g fill="none" stroke="#4f5e48" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="34" y="13" width="28" height="44" rx="1.5"/>
+    <path d="M34 23h28"/>
+    <rect x="38" y="27" width="11" height="8" rx="1"/>
+    <path d="M38 41h8M38 45h8M38 49h8"/>
+    <path d="M57 34v8"/>
+    <path d="M37 57v3M59 57v3"/>
+  </g>
+  <g fill="none" stroke="#a83c29" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="54" cy="18" r="1.5"/>
+    <circle cx="42" cy="18" r="1.5"/>
+  </g>
+  <rect y="70" width="96" height="2" fill="#a83c29"/>
+</svg>

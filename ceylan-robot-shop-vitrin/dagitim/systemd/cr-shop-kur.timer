@@ -1,0 +1,10 @@
+[Unit]
+Description=cr-shop-demo TCMB EUR kuru her gün 06:00
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+Unit=cr-shop-kur.service
+
+[Install]
+WantedBy=timers.target

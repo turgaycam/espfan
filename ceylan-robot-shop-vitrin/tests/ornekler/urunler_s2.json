@@ -1,0 +1,9 @@
+{"data": [
+  {"_id": "6acc926771b553f54c00aa01", "sku": "8205010100007", "__v": 0,
+   "attributes": {"manufacturerCode": "LRS-350-24", "vatRate": 20, "weight": 0},
+   "categoryId": {"_id": "6a8fd25892da5f9d69e4ff01", "name": "AC/DC DÖNÜŞTÜRÜCÜLER", "path": "511.512"},
+   "createdAt": "2026-10-12T07:55:19.460Z", "descriptionSections": [], "images": [],
+   "locked": false, "minOrderQuantity": 1, "name": "MEAN WELL 24V GÜÇ KAYNA�\udc9eI",
+   "price": {"amount": 125.5, "currency": "EUR"}, "source": "erp", "status": "active", "stock": 4,
+   "techSpecs": [], "updatedAt": "2026-10-12T17:40:05.100Z"}
+], "total": 3, "page": 2, "limit": 2, "totalPages": 2}

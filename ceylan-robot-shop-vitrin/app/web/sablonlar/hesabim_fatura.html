@@ -1,0 +1,49 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import ikon with context %}
+{% block baslik %}{{ t('hesap.fatura_bilgilerim') }}{% endblock %}
+{% block icerik %}
+{# G3i madde 9: fatura bilgilerim — unvan, vergi dairesi (kurumsal), adres, telefon düzenlenir; VKN / VAT ID salt okunur #}
+{% macro alan(ad, etiket, zorunlu=false, tur='text', ek='') %}
+<div class="alan{% if hatalar.get(ad) %} hatali{% endif %}">
+  <label for="{{ ad }}">{{ t(etiket) }}{% if zorunlu %} <span class="zorunlu" aria-hidden="true">*</span>{% endif %}</label>
+  <input id="{{ ad }}" name="{{ ad }}" type="{{ tur }}" value="{{ alanlar[ad] }}" maxlength="200"{% if zorunlu %} required aria-required="true"{% endif %}{% if ek %} {{ ek|safe }}{% endif %}{% if hatalar.get(ad) %} aria-invalid="true" aria-describedby="hata-{{ ad }}"{% endif %}>
+  {% if hatalar.get(ad) %}<p class="alan-hata" id="hata-{{ ad }}">{{ t(hatalar[ad]) }}</p>{% endif %}
+</div>
+{% endmacro %}
+<nav class="iz" aria-label="{{ t('katalog.iz') }}">
+  <ol>
+    <li><a href="/{{ dil }}/hesabim">{{ t('hesap.hesabim_baslik') }}</a></li>
+    <li><span aria-current="page">{{ t('hesap.fatura_bilgilerim') }}</span></li>
+  </ol>
+</nav>
+<section class="hesap-fatura">
+  <h1>{{ t('hesap.fatura_bilgilerim') }}</h1>
+  <p class="alan-ipucu">{{ t('hesap.fatura_aciklama') }}</p>
+  {#- G3k madde 14: hata özeti hatalı alanları (form sırasıyla, alana bağlantılı) listeler; alan yanında da hata metni #}
+  {% if hatalar %}{% set etiketler = {'ad': 'odeme.unvan' if musteri.tip.value != 'bireysel' else 'odeme.ad_soyad', 'vergi_dairesi': 'hesap.vergi_dairesi', 'satir1': 'odeme.adres_satir1', 'satir2': 'odeme.adres_satir2', 'posta_kodu': 'odeme.posta_kodu', 'sehir': 'odeme.sehir', 'telefon': 'odeme.telefon'} %}
+  <div class="form-hata-ozet" role="alert" tabindex="-1" data-hata-ozet>
+    <p>{{ t('odeme.form_hatali') }}</p>
+    <ul>{% for ad, etiket in etiketler.items() if hatalar.get(ad) %}<li><a href="#{{ ad }}">{{ t(etiket) }}: {{ t(hatalar[ad]) }}</a></li>{% endfor %}</ul>
+  </div>{% endif %}
+  <dl class="fatura-salt-okunur" data-e2e="fatura-salt-okunur">
+    {% if musteri.tip.value == 'kurumsal' %}<dt>{{ t('odeme.vkn') }}</dt><dd class="parca-no">{{ musteri.vergi_kimlik_no or '—' }}</dd>
+    {% elif musteri.tip.value == 'yurtdisi' %}<dt>{{ t('odeme.vat_id') }}</dt><dd class="parca-no">{{ musteri.vat_id or '—' }}</dd>
+    <dt>{{ t('odeme.ulke') }}</dt><dd>{{ t('ulke.' ~ musteri.ulke) if musteri.ulke in ulkeler else musteri.ulke }}</dd>{% endif %}
+  </dl>
+  {% if musteri.tip.value != 'bireysel' %}<p class="alan-ipucu">{{ t('hesap.vergi_no_salt_okunur') }}</p>{% endif %}
+  <form method="post" action="/{{ dil }}/hesabim/fatura" class="form hesap-fatura-formu">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {{ alan('ad', 'odeme.unvan' if musteri.tip.value != 'bireysel' else 'odeme.ad_soyad', zorunlu=true, ek='autocomplete="organization"') }}
+    {% if kurumsal %}{{ alan('vergi_dairesi', 'hesap.vergi_dairesi', zorunlu=true, ek='autocomplete="off"') }}{% endif %}
+    {{ alan('satir1', 'odeme.adres_satir1', zorunlu=true, ek='autocomplete="address-line1"') }}
+    {{ alan('satir2', 'odeme.adres_satir2', ek='autocomplete="address-line2"') }}
+    <div class="alan-cifti">
+      {{ alan('posta_kodu', 'odeme.posta_kodu', ek='autocomplete="postal-code"') }}
+      {{ alan('sehir', 'odeme.sehir', zorunlu=true, ek='autocomplete="address-level2"') }}
+    </div>
+    {{ alan('telefon', 'odeme.telefon', tur='tel', ek='autocomplete="tel"') }}
+    <button type="submit" class="dugme" data-e2e="fatura-kaydet">{{ t('hesap.fatura_kaydet') }}</button>
+  </form>
+  <p><a href="/{{ dil }}/hesabim">{{ t('siparis.hesabim') }}</a></p>
+</section>
+{% endblock %}

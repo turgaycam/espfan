@@ -1,0 +1,19 @@
+{#- G3i madde 17 / G3l madde 11: teklif isteğinde gönderilen iletişim, vergi, PO, teslim adresi ve parça kodu (onay sayfası
+   ve Hesabım > teklif detayı). Değişkenler: teklif; iletisim_mesaj=false ise mesaj satırı yok (detayda tam metin ayrı). #}
+<dl class="teklif-ozet-iletisim" data-e2e="teklif-ozet-iletisim">
+  {#- G3k madde 12: ad ve adet ayrı satır; özet etiketlerinde "(isteğe bağlı)" yok #}
+  <dt>{{ t('teklif.ad') }}</dt><dd>{{ teklif.ad }}</dd>
+  {% if teklif.eposta %}<dt>{{ t('teklif.eposta') }}</dt><dd>{{ teklif.eposta }}</dd>{% endif %}
+  {% if teklif.telefon %}<dt>{{ t('teklif.telefon') }}</dt><dd>{{ teklif.telefon }}</dd>{% endif %}
+  {% if teklif.firma %}<dt>{{ t('teklif.firma') }}</dt><dd>{{ teklif.firma }}</dd>{% endif %}
+  {% if teklif.vat_id %}<dt>VAT ID</dt><dd class="parca-no">{{ teklif.vat_id }}</dd>{% endif %}
+  {% if teklif.vkn %}<dt>{{ t('teklif.vkn') }}</dt><dd class="parca-no">{{ teklif.vkn }}{% if teklif.vergi_dairesi %} · {{ teklif.vergi_dairesi }}{% endif %}</dd>{% endif %}
+  {% if teklif.musteri_po %}<dt>{{ t('siparis.po') }}</dt><dd class="parca-no">{{ teklif.musteri_po }}</dd>{% endif %}
+  {#- G3l madde 11: girilen parça kodu (kalem/ürün özetinde görünmüyorsa) #}
+  {% if teklif.parca_kodu and (teklif.kalemler or teklif.urun_id) %}<dt>{{ t('teklif.parca_kodu') }}</dt><dd class="parca-no">{{ teklif.parca_kodu }}</dd>{% endif %}
+  {% if teklif.teslim_adresi %}<dt>{{ t('teklif.teslim_adresi_kisa') }}</dt><dd>{{ teklif.teslim_adresi }}</dd>{% endif %}
+  {% if not teklif.kalemler %}<dt>{{ t('teklif.adet') }}</dt><dd>{{ teklif.adet }}</dd>{% endif %}
+  {% if teklif.aciliyet %}<dt>{{ t('teklif.aciliyet_kisa') }}</dt><dd>{{ t('teklif.aciliyet_' ~ teklif.aciliyet) }}</dd>{% endif %}
+  {% if teklif.model %}<dt>{{ t('teklif.model_kisa') }}</dt><dd>{{ teklif.model }}</dd>{% endif %}
+  {% if iletisim_mesaj is not defined or iletisim_mesaj %}<dt>{{ t('teklif.mesaj') }}</dt><dd class="teklif-mesaj-metin">{{ teklif.mesaj[:200] }}{% if teklif.mesaj | length > 200 %}…{% endif %}</dd>{% endif %}
+</dl>

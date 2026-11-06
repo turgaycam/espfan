@@ -1,0 +1,22 @@
+{# G3g madde 26: teklif isteğinin kalem özeti (onay sayfası ve Hesabım > teklif detayı). Değişken: teklif. #}
+<section class="teklif-ozet" aria-labelledby="teklif-ozet-baslik" data-e2e="teklif-ozet">
+  <h2 id="teklif-ozet-baslik">{{ t('teklif.ozet_baslik') }}</h2>
+  <ul class="teklif-ozet-kalemler">
+    {% if teklif.kalemler %}
+    {% for k in teklif.kalemler %}<li>{{ k.adet }} × <a href="/{{ dil }}/urun/{{ k.urun_id }}">{{ urun_ad(k.urun_id, k.ad) }}</a> <span class="parca-no">{{ k.kod }}</span></li>{% endfor %}
+    {% elif teklif.urun_id %}
+    <li>{{ teklif.adet }} × <a href="/{{ dil }}/urun/{{ teklif.urun_id }}">{{ urun_ad(teklif.urun_id, teklif.urun_ad) }}</a></li>
+    {% elif teklif.parca_kodu %}
+    <li>{{ teklif.adet }} × {{ t('teklif.parca_kodu') }}: <span class="parca-no">{{ teklif.parca_kodu }}</span></li>
+    {% else %}
+    <li>{{ t('hesap.genel_teklif') }}</li>
+    {% endif %}
+  </ul>
+  {#- G3l madde 14: PO iletişim satırlarında (_teklif_iletisim.html) bir kez #}
+  {% if teklif.istenen_tarih or teklif.hedef_fiyat %}
+  <dl class="teklif-ozet-ek">
+    {% if teklif.istenen_tarih %}<dt>{{ t('teklif.istenen_tarih') }}</dt><dd class="sayi">{{ gun_tarihi(teklif.istenen_tarih) }}</dd>{% endif %}
+    {% if teklif.hedef_fiyat %}<dt>{{ t('teklif.hedef_fiyat') }}</dt><dd>{{ teklif.hedef_fiyat }}</dd>{% endif %}
+  </dl>
+  {% endif %}
+</section>

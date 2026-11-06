@@ -1,0 +1,25 @@
+{% extends "yasal/_taban.html" %}
+{% block baslik %}Legal Notice{% endblock %}
+{% block metin %}
+<h1>Legal Notice (Imprint)</h1>
+<p class="yasal-ozet">Service provider information under Article 3 of the Turkish Law No. 6563 on the Regulation of Electronic Commerce and the related regulation on service providers.</p>
+
+<h2>Service provider</h2>
+<dl class="kunye">
+  <dt>Trade name</dt><dd>{{ satici_unvan }}</dd>
+  <dt>Brand</dt><dd>Ceylan Robot</dd>
+  <dt>Registered address</dt><dd>K.O.S.B. 3. Sk., No: 7, 42250 Selçuklu / Konya, Türkiye</dd>
+</dl>
+{# G3e madde 21: registry/tax fields not yet completed are not listed; one-line note #}
+<p class="kunye-not" data-e2e="kunye-demo-notu">Demo: to be completed for production.</p>
+
+<h2>Contact</h2>
+<dl class="kunye">
+  {% if telefon %}<dt>Phone</dt><dd><a href="tel:{{ telefon_tel }}">{{ telefon }}</a></dd>{% endif %}
+  {% if iletisim_eposta %}<dt>E-mail</dt><dd data-e2e="kunye-eposta"><a href="mailto:{{ iletisim_eposta }}">{{ iletisim_eposta }}</a></dd>{% endif %}
+  <dt>Business hours</dt><dd>Mon–Fri 08:30–18:00 (TRT, UTC+3) – indicative</dd>
+</dl>
+
+<h2>Note</h2>
+<p>This demo site does not show the company's registry, tax and registration details; they will be added from company records before the live site is launched. Legal texts: <a href="/en/yasal/kvkk">Personal Data Protection Notice</a>, <a href="/en/yasal/cerez">Cookie Policy</a>, <a href="/en/yasal/kullanim">Terms of Use and Sale</a>.</p>
+{% endblock %}

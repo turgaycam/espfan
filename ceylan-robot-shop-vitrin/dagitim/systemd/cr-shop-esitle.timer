@@ -1,0 +1,10 @@
+[Unit]
+Description=cr-shop-demo katalog eşitlemesi her gece 02:30
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+Unit=cr-shop-esitle.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,174 @@
+{# Fiyat bloğu: sözleşmedeki fiyat(urun, gosterim). t, para, kur* bağlamdan gelir.
+   K3: kdv_dahil ise "KDV dahil"; değilse ana para TRY değilken ya da kur yokken "KDV hariç" açıkça yazılır. #}
+{% macro fiyat(urun, gosterim, kdv_satiri=false) -%}
+<div class="fiyat-blok">
+  {%- if urun.fiyat_temsili %}
+  <p class="fiyat-rozetler fiyat-rozetler-ust"><span class="rozet rozet-temsili" title="{{ t('fiyat.temsili_aciklama') }}">{{ t('fiyat.temsili') }}</span></p>
+  {%- endif %}
+  <p class="fiyat-ana" data-e2e="fiyat-ana" data-para="{{ gosterim.ana_para }}" data-kdv="{{ 'dahil' if gosterim.kdv_dahil else 'haric' }}"><span class="tutar">{{ para(gosterim.ana_tutar, gosterim.ana_para) }}</span>
+  {%- if gosterim.kdv_dahil %} <span class="fiyat-kdv">{{ t('fiyat.kdv_dahil') }}</span>
+  {%- elif gosterim.ana_para != 'TRY' or not kur %} <span class="fiyat-kdv">{{ t('fiyat.kdv_haric') }}</span>{% endif %}{{ kdv_oran_etiketi(urun) }}</p>
+  {%- if gosterim.ikincil_tutar is not none %}
+  <p class="fiyat-ikincil" data-e2e="fiyat-ikincil">{% if gosterim.ana_para == 'TRY' and not kdv_var %}≈ {{ para(gosterim.ikincil_tutar, gosterim.ikincil_para) }}{% else %}{{ t('fiyat.ikincil', tutar=para(gosterim.ikincil_tutar, gosterim.ikincil_para)) }}{% endif %}</p>
+  {%- endif %}
+  {#- G3b madde 12: ana fiyatın diğer KDV karşılığı aynı para biriminde; TR dışı teslimde KDV uygulanmaz #}
+  {%- if kdv_satiri %}{{ kdv_karsilik_satiri(urun, gosterim) }}{% endif %}
+  {%- if kur and (gosterim.ana_para == 'TRY' or gosterim.ikincil_para == 'TRY') %}
+  <p class="kur-satiri{% if kur_bayat %} kur-bayat{% endif %}">{{ t('fiyat.kur_satiri', kur=kur_metni, tarih=kur_tarihi) }}{% if kur_bayat %} · {{ t('fiyat.kur_bayat') }}{% endif %}</p>
+  {%- endif %}
+</div>
+{%- endmacro %}
+
+{# G3j madde 4: %20 dışındaki geçerli KDV oranı fiyatın yanında açıkça (liste, ürün, sepet); yalnız KDV uygulanan
+   (Türkiye teslimi) bağlamda #}
+{% macro kdv_oran_etiketi(urun) -%}
+{%- if kdv_var and not urun.kdv_gecersiz and urun.kdv_orani != 20 %} <span class="rozet rozet-kdv-oran">{{ t('fiyat.kdv_oran', oran=urun.kdv_orani | int) }}</span>{% endif %}
+{%- endmacro %}
+
+{# G3b madde 12 / G3e madde 14: ana fiyatın diğer KDV karşılığı (ürün sayfası ve liste aynı makro). kisa: listede
+   KDV uygulanmayan (ihracat) bağlamda satır basılmaz; ülke seçilmemişse KDV hükmü yazılmaz. #}
+{% macro kdv_karsilik_satiri(urun, gosterim, kisa=false) -%}
+{%- set kk = kdv_karsilik(urun, gosterim) %}
+{%- if kk %}<p class="fiyat-ikincil fiyat-kdv-karsilik" data-e2e="fiyat-kdv-karsilik">{{ t('fiyat.kdv_dahil_karsilik' if kk[2] else 'fiyat.kdv_haric_karsilik', tutar=para(kk[0], kk[1])) }}</p>
+{%- elif not kisa and ulke %}<p class="fiyat-ikincil fiyat-kdv-karsilik" data-e2e="fiyat-kdv-karsilik">{{ t('fiyat.kdv_uygulanmaz') }}</p>{% endif %}
+{%- endmacro %}
+
+{# G3g madde 7: sepet/ödeme/onay satır tutarı, birim fiyatla aynı ana para birimi ve KDV bazında (g: FiyatGosterim) #}
+{#- G3i madde 3: ana tutar bir satır (kendi KDV bazıyla, kdv_etiketi), ikincil (diğer para / KDV hariç) ayrı küçük satır;
+   aynı satırda ₺ KDV dahil ile € KDV hariç karışmaz #}
+{#- G3n madde 7: ₺ gösterimde KDV uygulanmayan (yurt dışı) satır "KDV hariç" değil "KDV uygulanmaz (ihracat)" #}
+{% macro tutar_gosterimi(g, e2e=true, ikincil_kisa=false, kdv_etiketi=false) -%}
+<span class="kalem-ana"><span class="tutar"{% if e2e %} data-e2e="kalem-tutar" data-para="{{ g.ana_para }}" data-kdv="{{ 'dahil' if g.kdv_dahil else 'haric' }}"{% endif %}>{{ para(g.ana_tutar, g.ana_para) }}</span>{% if kdv_etiketi %} <span class="fiyat-kdv">{{ t('fiyat.kdv_dahil' if g.kdv_dahil else ('fiyat.kdv_uygulanmaz' if g.ana_para == 'TRY' and not kdv_var else 'fiyat.kdv_haric')) }}</span>{% endif %}</span>
+{%- if g.ikincil_tutar is not none %}
+<span class="fiyat-ikincil kalem-ikincil">{% if ikincil_kisa or (g.ana_para == 'TRY' and not kdv_var) %}≈ {{ para(g.ikincil_tutar, g.ikincil_para) }}{% else %}{{ t('fiyat.ikincil', tutar=para(g.ikincil_tutar, g.ikincil_para)) }}{% endif %}</span>{% endif %}
+{%- endmacro %}
+
+{# G3i madde 2: görünür fiyat gösterim seçici (liste üstü ve sepet). JS'siz POST /tercih (csrf); seçim oturum + çerezde.
+   Basılı düğme sayfadaki gösterimdir (fiyat_gosterim). Ödeme para birimi değişmez (özet notu). #}
+{% macro fiyat_secici() -%}
+<form class="fiyat-secici" id="fiyat-gosterim" method="post" action="/tercih" data-e2e="fiyat-secici">
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<input type="hidden" name="sonraki" value="{{ istek_yolu }}">
+<span class="fiyat-secici-etiket">{{ t('fiyat.secici_etiket') }}</span>
+{%- for g in ('try', 'eur') %} <button type="submit" name="fiyat" value="{{ g }}" class="fiyat-secici-dugme" aria-pressed="{{ 'true' if fiyat_gosterim == g else 'false' }}">{{ t('fiyat.secici_' ~ g) }}</button>{% if loop.first %}<span class="fiyat-secici-ayrac" aria-hidden="true">|</span>{% endif %}{% endfor %}
+<span class="fiyat-secici-not">{{ t('fiyat.secici_not') }}</span>
+</form>
+{%- endmacro %}
+
+{# G3g madde 6: sepete ekle / karşılaştır POST dönüşünde onay, ziyaretçinin indiği çapada (ürün kartı / satın alma
+   kutusu içinde). JS'siz; sayfa üstündeki genel bildirim de kalır. #}
+{#- G3n madde 1: uyari=true (sepet satırı: adet düzeltmesi / geçersiz adet) uyarı rengi ve ikonu #}
+{% macro yerel_bildirim(uid, uyari=false) -%}
+{%- for b in (yerel_bildirimler.get(uid, []) if yerel_bildirimler is defined else []) %}<p class="yerel-bildirim{% if uyari %} yerel-uyari{% endif %}" role="status">{{ ikon('uyari' if uyari else 'kontrol', 'ikon-16') }}<span>{{ b.metin }}{% for g in b.baglar %}{% if not loop.first %} ·{% endif %} <a href="{{ g.url }}">{{ g.metin }}</a>{% endfor %}</span></p>{% endfor %}
+{%- endmacro %}
+
+{# K22 ikon: sprite'tan bir sembol. Süs amaçlıdır (aria-hidden); anlamı yanındaki metin taşır. #}
+{% macro ikon(ad, sinif='') -%}
+<svg class="ikon{% if sinif %} {{ sinif }}{% endif %}" aria-hidden="true" focusable="false"><use href="/statik/ikonlar.svg#{{ ad }}"></use></svg>
+{%- endmacro %}
+
+{# Kart ve listelerde kısa fiyat satırı (tutar tabular-nums; KDV ibaresi K3 kuralıyla) #}
+{% macro fiyat_kisa(urun, gosterim) -%}
+<div class="kart-fiyat-blok">
+{%- if urun.fiyat_temsili %}<p class="fiyat-rozetler-ust"><span class="rozet rozet-temsili">{{ t('fiyat.temsili') }}</span></p>{% endif %}
+<p class="kart-fiyat"><strong class="tutar">{{ para(gosterim.ana_tutar, gosterim.ana_para) }}</strong>
+{%- if gosterim.kdv_dahil %} <span class="fiyat-kdv">{{ t('fiyat.kdv_dahil') }}</span>
+{%- elif gosterim.ana_para != 'TRY' or not kur %} <span class="fiyat-kdv">{{ t('fiyat.kdv_haric') }}</span>{% endif %}{{ kdv_oran_etiketi(urun) }}</p>
+{{ kdv_karsilik_satiri(urun, gosterim, kisa=true) }}
+</div>
+{%- endmacro %}
+
+{# G3e madde 10: büyük "Parça no" üretici kodu (varsa), iç SKU küçük "Stok kodu" #}
+{% macro parca_kodlari(u) -%}
+<span class="parca-no">{{ u.uretici_kodu or u.sku }}</span>{% if u.uretici_kodu %} <span class="stok-kodu">{{ t('urun.stok_kodu') }} {{ u.sku }}</span>{% endif %}
+{%- endmacro %}
+
+{# G3b I-2: güven satırı (detay ve kartta aynı kural): test/garanti iddiası yalnız gerçek durumu test edilmiş 2. el
+   ya da yenilenmiş üründe (garantili_mi). G3e madde 4: iade metni müşteri tipine göre (iade_kipi): bireysel 14 gün,
+   kurumsal / yurt dışı ticari alıcıda garanti kapsamında değişim/iade, misafirde ikisi birlikte. #}
+{# G3g madde 14 / kontrolcü kararı: duruma göre tek satır garanti özeti + garanti sayfasındaki tanıma bağlantı
+   (ürün sayfasında durum satırının altında; kart ve karşılaştırmada güven satırında). "yenilenmiş" test edilmiş
+   tanımına bağlanır (garanti sayfasında ayrı tanım yok). #}
+{% macro garanti_ozeti(u) -%}
+{%- set g_kod = 'ikinci_el_test_edildi' if u.durum_kodu == 'yenilenmis' else (u.durum_kodu if u.durum_kodu in ('yeni', 'ikinci_el', 'ikinci_el_test_edildi', 'ikinci_el_oldugu_gibi', 'belirtilmemis') else 'belirtilmemis') %}
+{%- set g_metin = 'test' if g_kod == 'ikinci_el_test_edildi' else g_kod -%}
+{{ t('urun.garanti_ozeti_' ~ g_metin) }} · <a href="/{{ dil }}/yasal/garanti#durum-{{ g_kod }}">{{ t('urun.garanti_kosullari') }}</a>
+{%- endmacro %}
+
+{#- G3n madde 5: iade satırları tek kaynaktan (baglam.iade_metinleri: durum × müşteri tipi); kart, karşılaştırma ve
+   ürün sayfası aynı metni basar #}
+{% macro iade_satirlari(u) -%}
+<span class="iade-satirlari" data-e2e="iade-satirlari">{% for s in iade_metinleri(u) %}<span class="iade-satir"><a href="/{{ dil }}/yasal/iade{{ s.capa }}">{{ s.metin }}</a></span>{% endfor %}</span>
+{%- endmacro %}
+
+{% macro guven_notu(u, sinif) -%}
+<p class="{{ sinif }}">{{ ikon('kalkan', 'ikon-16') }}<span class="guven-metin"><span class="garanti-ozet">{{ garanti_ozeti(u) }}</span>{{ iade_satirlari(u) }}</span></p>
+{%- endmacro %}
+
+{# G3c madde 24: karşılaştırmaya ekle / çıkar (JS'siz POST). Ziyaretçi aynı sayfaya döner (istek_yolu). #}
+{% macro karsilastir_dugmesi(u, sinif='') -%}
+{% set var_mi = u.id in karsilastirma %}
+<form class="karsilastir-form{% if sinif %} {{ sinif }}{% endif %}" method="post" action="/{{ dil }}/karsilastir/{{ 'kaldir' if var_mi else 'ekle' }}">
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<input type="hidden" name="urun_id" value="{{ u.id }}">
+<input type="hidden" name="sonraki" value="{{ istek_yolu }}">
+<button type="submit" class="karsilastir-dugme" title="{{ t('karsilastir.listede' if var_mi else 'karsilastir.ekle') }}" aria-pressed="{{ 'true' if var_mi else 'false' }}" data-e2e="{{ 'karsilastir-cikar' if var_mi else 'karsilastir-ekle' }}">{{ ikon('kontrol' if var_mi else 'karsilastir', 'ikon-16') }}<span>{{ t('karsilastir.listede' if var_mi else 'karsilastir.ekle') }}</span><span class="gizli">: {{ urun_ad(u.id, u.ad) }}</span></button>
+</form>
+{%- endmacro %}
+
+{# G3h madde 12: listede en az 2 ürün varken karşılaştırmaya doğrudan bağlantı #}
+{% macro karsilastir_git() -%}
+{% if karsilastirma | length >= 2 %}<a class="dugme ikincil dugme-kucuk karsilastir-git" href="/{{ dil }}/karsilastir" data-e2e="karsilastir-git-liste">{{ ikon('karsilastir', 'ikon-16') }}<span>{{ t('karsilastir.git_n', n=karsilastirma | length) }}</span></a>{% endif %}
+{%- endmacro %}
+
+{# Ürün kartı (ızgara öğesi). kapak=true: yer tutucu yerine kategori fotoğrafı (ana sayfa vitrini). #}
+{% macro urun_karti(u, kapak=false) -%}
+<article class="kart" id="urun-{{ u.id }}">
+  {% set ham = gorsel_adresi(u) %}
+  {% set yer = yer_tutucu_mu(ham) %}
+  {% set g_adres = kategori_kapak(u.kok_kategori_ad) if kapak and yer else ham %}
+  <a class="kart-gorsel-bag" href="/{{ dil }}/urun/{{ u.id }}" tabindex="-1" aria-hidden="true">
+    <img class="kart-gorsel" src="{{ g_adres }}" data-yedek="{{ yer_tutucu(u.kok_kategori_ad) }}" alt="" width="640" height="480" loading="lazy" decoding="async">
+  </a>
+  <p class="temsili-gorsel" data-temsili{% if not yer %} hidden{% endif %}>{{ t('urun.temsili_gorsel') }}</p>
+  <div class="kart-govde">
+    <p class="kart-sku">{{ parca_kodlari(u) }}</p>
+    <h3 class="kart-baslik"><a href="/{{ dil }}/urun/{{ u.id }}" data-e2e="urun-baglanti">{{ urun_ad(u.id, u.ad) }}</a></h3>
+    {% if u.teklif_zorunlu %}
+    <p class="kart-fiyat kart-teklif">{{ t('urun.fiyat_teklifle_kdv' if u.kdv_gecersiz else 'urun.fiyat_teklifle') }}</p>
+    <p class="kart-durum"><a href="/{{ dil }}/teklif?urun_id={{ u.id }}">{{ t('urun.teklif_iste') }}</a></p>
+    {% else %}
+    {{ fiyat_kisa(u, fiyat_goster(u)) }}
+    {% endif %}
+    {% if not u.teklif_zorunlu and u.stok > 0 and not tumu_ayrilmis(u) %}<p class="kart-stok">{{ ikon('kontrol', 'ikon-16') }} {{ t('urun.stokta_kisa') }}</p>{% endif %}
+    <p class="kart-teslim">{{ teslim_notu(u) }}</p>
+    {{ guven_notu(u, 'kart-garanti') }}
+    {{ karsilastir_dugmesi(u, 'kart-karsilastir') }}
+    {{ yerel_bildirim(u.id) }}
+  </div>
+</article>
+{%- endmacro %}
+
+{# Sol kategori ağacı: kökler her zaman, alt dallar yalnız seçili yol üzerinde açık #}
+{#- G3h madde 4: onek verilirse bağlantı onek ~ kimlik ~ ek (arama/filtre parametreleri korunur) #}
+{% macro kategori_agaci(dugumler, secili_id, acik, sayilar=true, onek=none, ek='') -%}
+<ul class="agac">
+{%- for d in dugumler if d.urun_sayisi recursive %}
+  <li><a href="{{ onek if onek else '/' ~ dil ~ '/kategori/' }}{{ d.kategori.id }}{{ ek }}"{% if d.kategori.id == secili_id %} aria-current="page"{% endif %}>{{ kat_ad(d.kategori.ad) }}{% if sayilar %} <span class="sayi">({{ d.urun_sayisi }})</span>{% endif %}</a>
+  {%- if d.cocuklar and d.kategori.id in acik %}<ul>{{ loop(d.cocuklar) }}</ul>{% endif %}</li>
+{%- endfor %}
+</ul>
+{%- endmacro %}
+
+{# Etiketli metin alanı; hata ve ipucu aria-describedby ile bağlanır. tipler: JS ile gizlenecek tipler (boşlukla ayrılmış). #}
+{% macro metin_alani(ad, etiket, deger='', hata=none, tur='text', kosul=none, ipucu=none, otomatik='off', zorunlu=false, tipler=none, uzunluk=200) -%}
+<div class="alan{% if hata %} hatali{% endif %}"{% if tipler %} data-tipler="{{ tipler }}"{% endif %}>
+  <label for="a-{{ ad }}">{{ etiket }}{% if kosul %} <span class="etiket-kosul">{{ kosul }}</span>{% endif %}</label>
+  <input id="a-{{ ad }}" name="{{ ad }}" type="{{ tur }}" value="{{ deger }}" autocomplete="{{ otomatik }}" maxlength="{{ uzunluk }}"
+    {%- if zorunlu %} required{% endif %}
+    {%- if hata or ipucu %} aria-describedby="{% if ipucu %}i-{{ ad }}{% endif %}{% if hata %} h-{{ ad }}{% endif %}"{% endif %}
+    {%- if hata %} aria-invalid="true"{% endif %}>
+  {%- if ipucu %}<p class="alan-ipucu" id="i-{{ ad }}">{{ ipucu }}</p>{% endif %}
+  {%- if hata %}<p class="alan-hata" id="h-{{ ad }}">{{ hata }}</p>{% endif %}
+</div>
+{%- endmacro %}

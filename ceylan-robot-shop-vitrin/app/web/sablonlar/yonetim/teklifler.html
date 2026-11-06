@@ -1,0 +1,54 @@
+{% extends "yonetim/_taban.html" %}
+{% from "_makrolar.html" import ikon with context %}
+{% block baslik %}{{ t('yonetim.menu_teklifler') }}{% endblock %}
+{% block icerik %}
+<div class="yonetim">
+  {% include "yonetim/_menu.html" %}
+  <section class="yonetim-icerik" aria-labelledby="yonetim-h1">
+    <h1 id="yonetim-h1">{{ t('yonetim.menu_teklifler') }} <span class="yonetim-sayac">{{ teklifler|length }}</span></h1>
+    {% if hata %}<div class="form-hata-ozet" role="alert" tabindex="-1" data-hata-ozet><p>{{ t('yonetim.gecis_izinsiz', no=hata.no, eski=t('teklif_durum.' ~ hata.eski), yeni=t('teklif_durum.' ~ hata.yeni)) }}</p></div>{% endif %}
+    {% if not teklifler %}
+    <p class="yonetim-bos">{{ t('yonetim.liste_bos') }}</p>
+    {% else %}
+    <div class="tablo-sar">
+    <table class="tablo yonetim-tablo">
+      <thead>
+        <tr>
+          <th scope="col">{{ t('yonetim.no') }} · {{ t('yonetim.tarih') }}</th>
+          <th scope="col">{{ t('yonetim.musteri') }} · {{ t('yonetim.iletisim') }}</th>
+          <th scope="col">{{ t('yonetim.urun') }}</th><th scope="col">{{ t('yonetim.mesaj') }}</th>
+          <th scope="col">{{ t('yonetim.durum') }}</th><th scope="col">{{ t('yonetim.islem') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tk in teklifler %}
+        {%- set acil_acik = tk.aciliyet == 'acil' and tk.durum != 'kapandi' %}
+        <tr{% if acil_acik %} class="yt-acil"{% endif %}>
+          <td class="yt-no">{% if acil_acik %}<span class="rozet rozet-acil" data-e2e="teklif-acil">{{ t('teklif.aciliyet_acil') }}</span>{% endif %}<span class="parca-no">{{ tk.no }}</span><span class="yt-ikincil yt-satir sayi yt-tarih">{{ tarih(tk.olusturma) }}</span></td>
+          <td data-etiket="{{ t('yonetim.musteri') }}" class="yt-kisi"><span><strong>{{ tk.ad }}</strong>{% if tk.firma and tk.firma != tk.ad %}<span class="yt-satir">{{ tk.firma }}</span>{% endif %}
+            {% if tk.eposta %}<a class="yt-satir yt-eposta" href="mailto:{{ tk.eposta }}">{{ tk.eposta }}</a>{% endif %}{% if tk.telefon %}<span class="yt-satir sayi">{{ tk.telefon }}</span>{% endif %}{% if tk.vat_id %}<span class="yt-satir parca-no">VAT {{ tk.vat_id }}</span>{% endif %}{% if tk.vkn %}<span class="yt-satir parca-no">{{ t('teklif.vkn') }} {{ tk.vkn }}</span>{% endif %}{% if tk.vergi_dairesi %}<span class="yt-satir">{{ tk.vergi_dairesi }}</span>{% endif %}{% if tk.musteri_po %}<span class="yt-satir">PO <span class="parca-no">{{ tk.musteri_po }}</span></span>{% endif %}{% if tk.teslim_adresi %}<span class="yt-satir">{{ t('teklif.teslim_adresi_kisa') }}: {{ tk.teslim_adresi }}</span>{% endif %}
+            <span class="yt-ikincil yt-satir">{{ t('ulke.' ~ tk.ulke) if tk.ulke in ulkeler else tk.ulke }}{% if tk.musteri_id %} · #{{ tk.musteri_id }}{% endif %}</span></span></td>
+          <td data-etiket="{{ t('yonetim.urun') }}" class="yt-urun"><span>{% if tk.kalemler %}{% for k in tk.kalemler %}<span class="yt-satir"><a href="/tr/urun/{{ k.urun_id }}">{{ k.ad }}</a> <span class="parca-no yt-ikincil">{{ k.kod }}</span> <span class="yt-ikincil sayi">× {{ k.adet }}</span></span>{% endfor %}{% elif tk.urun_id and tk.urun_ad %}<a href="/tr/urun/{{ tk.urun_id }}">{{ tk.urun_ad }}</a>{% if tk.parca_kodu %} <span class="parca-no yt-ikincil">{{ tk.parca_kodu }}</span>{% endif %}{% elif tk.parca_kodu %}<span class="parca-no">{{ tk.parca_kodu }}</span>{% for u in eslesmeler.get(tk.id, []) %}<span class="yt-satir" data-e2e="teklif-eslesme"><a href="/tr/urun/{{ u.id }}">{{ u.ad }}</a> <span class="parca-no yt-ikincil">{{ u.sku }}</span></span>{% endfor %}{% else %}—{% endif %}{% if not tk.kalemler %} <span class="yt-ikincil sayi">× {{ tk.adet }}</span>{% endif %}{% if tk.model %}<span class="yt-satir">{{ t('teklif.model') }}: {{ tk.model }}</span>{% endif %}{% if tk.aciliyet and tk.aciliyet != 'acil' %}<span class="yt-satir yt-ikincil">{{ t('teklif.aciliyet_' ~ tk.aciliyet) }}</span>{% endif %}</span></td>
+          <td data-etiket="{{ t('yonetim.mesaj') }}" class="yt-mesaj">{% if tk.istenen_tarih %}<span class="yt-satir">{{ t('teklif.istenen_tarih') }}: <span class="sayi">{{ gun_tarihi(tk.istenen_tarih) }}</span></span>{% endif %}{% if tk.hedef_fiyat %}<span class="yt-satir">{{ t('teklif.hedef_fiyat') }}: {{ tk.hedef_fiyat }}</span>{% endif %}{% if tk.mesaj|length > 160 %}<details><summary>{{ tk.mesaj[:160] }}…</summary><p>{{ tk.mesaj }}</p></details>{% else %}{{ tk.mesaj }}{% endif %}</td>
+          <td data-etiket="{{ t('yonetim.durum') }}"><span class="rozet durum-rozeti teklif-{{ tk.durum }}">{{ t('teklif_durum.' ~ tk.durum) }}</span></td>
+          <td data-etiket="{{ t('yonetim.islem') }}" class="yt-islem">
+            {% if gecisler[tk.id] %}
+            <form method="post" action="/yonetim/teklif/{{ tk.id }}/durum" class="satir-formu">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <label class="gizli" for="tdurum-{{ tk.id }}">{{ t('yonetim.durum') }} {{ tk.no }}</label>
+              <select id="tdurum-{{ tk.id }}" name="durum">
+                {% for g in gecisler[tk.id] %}<option value="{{ g }}">{{ t('teklif_durum.' ~ g) }}</option>{% endfor %}
+              </select>
+              <button type="submit" class="dugme ikincil dugme-kucuk">{{ t('yonetim.degistir') }}</button>
+            </form>
+            {% else %}<span class="yt-ikincil">{{ t('yonetim.gecis_yok') }}</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

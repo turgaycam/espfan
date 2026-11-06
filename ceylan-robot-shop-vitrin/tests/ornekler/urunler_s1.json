@@ -1,0 +1,17 @@
+{"data": [
+  {"_id": "6accc40e71b553f54c02f4c6", "sku": "8301033800019", "__v": 0,
+   "attributes": {"manufacturerCode": "0010035195", "vatRate": 20, "weight": 0, "maxPrice": {"amount": 0, "currency": "EUR"}},
+   "categoryId": {"_id": "6a26d4fdd01723cd75a5004d", "name": "KR C4", "path": "12.41.243"},
+   "createdAt": "2026-10-12T11:27:10.577Z", "descriptionSections": [],
+   "images": ["/api/uploads/admin-uploads/ee278328-79d2-45db-bb15-99d3f9b44f5e.webp"],
+   "locked": false, "minOrderQuantity": 1, "name": "KUKA KRC5 KR 140 R3200-2 PA",
+   "price": {"amount": 0, "currency": "EUR"}, "source": "erp", "status": "active", "stock": 0,
+   "techSpecs": [], "updatedAt": "2026-10-12T17:41:23.369Z"},
+  {"_id": "6acc926771b553f54c00916f", "sku": "8102030100019", "__v": 0,
+   "attributes": {"manufacturerCode": "3UG4512-1BR20", "vatRate": 20, "weight": 0, "maxPrice": {"amount": 0, "currency": "EUR"}},
+   "categoryId": {"_id": "6a26d4fcd01723cd75a4fcbd", "name": "ROLELER/ZAMANLAYICILAR", "path": "10.18.75"},
+   "createdAt": "2026-10-12T07:55:19.460Z", "descriptionSections": [], "images": [],
+   "locked": false, "minOrderQuantity": 1, "name": "SIEMENS SIRIUS İZLEME RÖLESİ",
+   "price": {"amount": 0, "currency": "EUR"}, "source": "erp", "status": "active", "stock": 1,
+   "techSpecs": [], "updatedAt": "2026-10-12T17:40:02.577Z"}
+], "total": 3, "page": 1, "limit": 2, "totalPages": 2}
