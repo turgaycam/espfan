@@ -1,0 +1,5 @@
+{% from "_makrolar.html" import ikon with context %}
+{# G3c madde 18: ödeme adımından gelen ziyaretçiye neden hesap gerektiği (giriş ve kayıt sayfalarında) #}
+{% if sonraki and sonraki.startswith('/' ~ dil ~ '/odeme') %}
+<p class="bilgi-kutu odeme-hesap-notu" role="note">{{ ikon('bilgi') }}<span>{{ t('hesap.odeme_icin_hesap') }}</span></p>
+{% endif %}

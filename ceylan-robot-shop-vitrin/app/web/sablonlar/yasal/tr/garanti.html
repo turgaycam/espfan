@@ -1,0 +1,51 @@
+{% extends "yasal/_taban.html" %}
+{% block baslik %}Garanti Koşulları{% endblock %}
+{% block metin %}
+<h1>Garanti Koşulları</h1>
+<p class="yasal-ozet">Garanti kapsamı ürünün durumuna (yeni / ikinci el – test edildi / 2. el (genel) / ikinci el – olduğu gibi) ve alıcının tüketici mi tacir mi olduğuna göre değişir. Ürünün durumu ürün sayfasında rozet olarak gösterilir.</p>
+
+<h2>1. Ürün durumu tanımları</h2>
+<dl id="durumlar">
+  <dt id="durum-yeni"><strong>Yeni</strong></dt>
+  <dd>Kullanılmamış, orijinal ambalajında ürün. Üretici garantisi geçerlidir.</dd>
+  <dt id="durum-ikinci_el_test_edildi"><strong>İkinci el – test edildi</strong></dt>
+  <dd>Daha önce kullanılmış; sevkiyattan önce Ceylan Robot atölyesinde görsel kontrol, enerji verme ve temel fonksiyon testlerinden geçirilmiş ürün. Test kapsamı ve sonucu ürün sayfasında ve ürünle birlikte verilen test kaydında yazılır. Kozmetik kullanım izleri bulunabilir.</dd>
+  <dt id="durum-ikinci_el"><strong>2. el (genel)</strong></dt>
+  <dd>Daha önce kullanılmış; test durumu kaynak kayıtta ayrıca belirtilmemiş ürün. Satıştan önce fotoğraf/test raporu paylaşılır; garanti süresi teklif ve faturada belirtilir (temsili).</dd>
+  <dt id="durum-ikinci_el_oldugu_gibi"><strong>İkinci el – olduğu gibi</strong></dt>
+  <dd>Daha önce kullanılmış; fonksiyon testi yapılmamış veya yalnızca kısmen yapılmış, bulunduğu haliyle satılan ürün. Bilinen kusurlar ürün sayfasında yazılır. Yedek parça veya onarım amaçlı alımlar için uygundur.</dd>
+  <dt id="durum-belirtilmemis"><strong>Belirtilmemiş</strong></dt>
+  <dd>Durum bilgisi henüz girilmemiş ürün. Sipariş vermeden önce satış ekibinden durum teyidi alınmalıdır.</dd>
+</dl>
+
+<h2>2. Bireysel (tüketici) alıcılar</h2>
+<ul>
+  <li>Yeni ürünlerde üretici garantisi geçerlidir; garanti belgesiyle satılması zorunlu ürünlerde garanti süresi en az iki yıldır.</li>
+  <li>İkinci el dahil tüm ürünlerde 6502 sayılı Kanun'un ayıplı mal hükümleri saklıdır; ayıptan sorumluluk teslimden itibaren iki yıllık zamanaşımına tabidir.</li>
+  <li>"Olduğu gibi" ibaresi tüketicinin yasal haklarını kaldırmaz. Ancak satıştan önce ürün sayfasında açıkça bildirilen kusurlar ve ürünün yaşına uygun olağan aşınma ayıp sayılmaz.</li>
+  <li>"İkinci el – test edildi" ürünlerde satıcı ayrıca teslimden itibaren 6 ay süreyle, test kaydında listelenen fonksiyonların çalışacağını taahhüt eder. Bu süre hukuki ve ticari onay sürecinde kesinleştirilecektir.</li>
+  <li>Garanti kapsamındaki onarım süresi en fazla 20 iş günüdür.</li>
+</ul>
+
+<h2>3. Kurumsal alıcılar (B2B)</h2>
+<ul>
+  <li><strong>Yeni:</strong> Satıcının sorumluluğu üretici garantisinin koşulları ve süresiyle sınırlıdır.</li>
+  <li><strong>İkinci el – test edildi:</strong> Teslimden itibaren 6 ay fonksiyon garantisi. Satıcının yükümlülüğü önce onarım veya değişimle, bunlar mümkün değilse bedel iadesiyle sınırlıdır.</li>
+  <li><strong>2. el (genel):</strong> Garanti süresi ve kapsamı teklifte ve faturada yazılır (temsili); satıştan önce fotoğraf/test raporu paylaşılır.</li>
+  <li><strong>İkinci el – olduğu gibi:</strong> Satıcının ayıptan sorumluluğu sözleşmeyle kaldırılmıştır. Alıcı ürünü bulunduğu haliyle, muayene imkânı tanınarak satın aldığını kabul eder. Satıcının ayıbı alıcıdan hileyle gizlemesi veya ağır kusuru hali bu sınırlamanın dışındadır (TBK m.221).</li>
+  <li><strong>Dolaylı zararlar:</strong> Üretim kaybı, kâr kaybı ve duruş maliyeti gibi dolaylı zararlardan satıcı, kast ve ağır ihmal halleri dışında sorumlu değildir (TBK m.115).</li>
+  <li><strong>Muayene ve ihbar:</strong> TTK m.23'teki süreler uygulanır; ayrıntılar <a href="/tr/yasal/iade">İade ve Cayma</a> sayfasındadır.</li>
+</ul>
+
+<h2>4. Garanti kapsamı dışındaki durumlar</h2>
+<ul>
+  <li>Yetkisiz kişilerce yapılan kurulum, onarım veya müdahale,</li>
+  <li>Kılavuza aykırı kullanım, aşırı yükleme, çarpışma, uygun olmayan elektrik beslemesi veya ortam koşulları,</li>
+  <li>Sarf malzemeleri ve aşınan parçalar (kablo, kayış, pil, conta, filtre, fırça vb.),</li>
+  <li>Alıcının yaptığı yazılım, parametre veya programlama değişiklikleri,</li>
+  <li>Teslimden sonra alıcı kaynaklı taşıma ve depolama hasarları.</li>
+</ul>
+
+<h2>5. Garanti başvurusu</h2>
+<p>Sipariş numarası, ürünün seri numarası, arızanın tanımı ve mümkünse fotoğraf veya video ile teknik destek birimimize başvurabilirsiniz (iletişim bilgileri <a href="/tr/yasal/kunye">Künye</a>'de). Arıza tespiti uzaktan ya da atölyemizde yapılır. Garanti kapsamındaki işlerde taşıma masrafı satıcıya, kapsam dışındaki işlerde alıcıya aittir; kapsam dışı onarım için önce fiyat teklifi verilir.</p>
+{% endblock %}

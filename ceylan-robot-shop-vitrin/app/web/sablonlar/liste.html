@@ -1,0 +1,338 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import fiyat_kisa, fiyat_secici, kategori_agaci, ikon, karsilastir_dugmesi, karsilastir_git, parca_kodlari, yerel_bildirim with context %}
+{% block baslik %}{% if kategori %}{{ kat_metin(kategori.ad) }}{% elif q %}{{ t('katalog.arama_baslik', q=q) }}{% elif tum_urunler %}{{ t('katalog.tum_urunler') }}{% else %}{{ t('katalog.arama') }}{% endif %}{% endblock %}
+{% block icerik %}
+{# Uygulanan filtre çipleri (K22, G3a): her çip yalnız kendi değerini kaldırır #}
+{% macro cip_listesi(temizle_bagi) -%}
+{% if cipler %}
+<ul class="cipler" aria-label="{{ t('katalog.uygulanan_filtreler') }}">
+  {% for c in cipler %}
+  <li><a class="cip" href="{{ c.url }}">
+    {%- if c.tur == 'stokta' %}{{ t('katalog.filtre_stokta') }}
+    {%- elif c.tur in ('ayrilmis', 'tedarikli', 'fiyatli', 'teklifle') %}{{ t('katalog.faset_' ~ c.tur, gun=havale_gun) }}
+    {%- elif c.tur == 'marka' %}{{ t('katalog.cip_marka', ad=c.deger) }}
+    {%- elif c.tur == 'tip' %}{{ t('katalog.cip_tip', ad=tip_adlari.get(c.deger, c.deger)) }}
+    {%- elif c.tur == 'durum' %}{{ durum_adlari.get(c.deger, c.deger) }}
+    {%- elif c.tur == 'kat' %}{{ kat_ad(c.deger) }}
+    {%- elif c.tur == 'fmin' %}{{ t('katalog.cip_fmin', tutar=para(c.deger, fiyat_para)) }}
+    {%- else %}{{ t('katalog.cip_fmax', tutar=para(c.deger, fiyat_para)) }}{% endif %}
+    {%- if c.yaklasik is defined and c.yaklasik is not none %} <small class="cip-yaklasik">≈ {{ para(c.yaklasik, gosterim_para) }} ({{ t('katalog.cip_kdv_dahil' if gosterim_kdv_dahil else 'katalog.cip_kdv_haric') }})</small>{% endif %}<span class="gizli"> – {{ t('katalog.cip_kaldir') }}</span>{{ ikon('carpi', 'ikon-16') }}</a></li>
+  {% endfor %}
+  {% if temizle_bagi %}<li><a class="cip-temizle" href="{{ temizle_url }}">{{ t('katalog.temizle') }}</a></li>{% endif %}
+</ul>
+{% endif %}
+{%- endmacro %}
+{# Faset seçeneği: JS'siz onay kutusu (GET formu); sayı ayrık sayımdır #}
+{% macro secenek(ad, deger, etiket, s) -%}
+<label class="secim faset-secenek"><input type="checkbox" name="{{ ad }}" value="{{ deger }}"{% if s.secili %} checked{% endif %}> <span class="faset-ad">{{ etiket }}</span> <span class="faset-sayi">{{ s.sayi }}</span></label>
+{%- endmacro %}
+{#- G3j madde 9: her faset grubu <details> (başlık summary); varsayılan açık/kapalı, seçili değer varsa her zaman açık.
+   Kapalı grubun onay kutuları da formla gönderilir. legend (fieldset adı) ekran okuyucu için kalır, görsel başlık summary #}
+{% macro grup_ac(ad, baslik, acik) -%}
+<details class="faset-grup" data-grup="{{ ad }}"{% if acik %} open{% endif %}>
+<summary class="faset-baslik">{{ baslik }}</summary>
+{%- endmacro %}
+<nav class="iz" aria-label="{{ t('katalog.iz') }}">
+  <ol>
+    <li><a href="/{{ dil }}/">{{ t('genel.ana_sayfa') }}</a></li>
+    {% for k in yol %}
+    <li>{% if loop.last %}<span aria-current="page">{{ kat_ad(k.ad) }}</span>{% else %}<a href="/{{ dil }}/kategori/{{ k.id }}">{{ kat_ad(k.ad) }}</a>{% endif %}</li>
+    {% endfor %}
+    {% if arama_sayfasi %}<li><span aria-current="page">{{ t('katalog.arama') }}</span></li>{% endif %}
+    {% if tum_urunler %}<li><span aria-current="page">{{ t('katalog.tum_urunler') }}</span></li>{% endif %}
+  </ol>
+</nav>
+
+{#- G3m madde 4: ters / geçersiz fiyat uyarısı tek kez, sonuçların ve liste başlığının üstünde (filtre sütununda kopya yok) #}
+{% if fiyat_ters %}<p class="bilgi-kutu fiyat-ters" role="status">{{ t('katalog.fiyat_ters') }}</p>{% endif %}
+{% for g in fiyat_gecersiz %}<p class="bilgi-kutu fiyat-ters" role="status">{{ t('katalog.fiyat_gecersiz', deger=g) }}</p>{% endfor %}
+<div class="liste-baslik">
+  <h1>{% if kategori %}{{ kat_ad(kategori.ad) }}{% elif q %}{{ t('katalog.arama_baslik', q=q) }}{% elif tum_urunler %}{{ t('katalog.tum_urunler') }}{% else %}{{ t('katalog.arama') }}{% endif %}</h1>
+  {% if kategori_giris %}<p class="kategori-giris">{{ kategori_giris }}</p>{% endif %}
+  {% if alt_kategoriler | selectattr('urun_sayisi') | list %}
+  <ul class="alt-kategoriler" aria-label="{{ t('katalog.alt_kategoriler') }}">
+    {% for d in alt_kategoriler if d.urun_sayisi %}<li><a href="/{{ dil }}/kategori/{{ d.kategori.id }}">{{ kat_ad(d.kategori.ad) }} <span class="sayi">{{ d.urun_sayisi }}</span></a></li>{% endfor %}
+  </ul>
+  {% endif %}
+</div>
+
+<div class="liste-duzen{% if not sonuc.urunler %} liste-bos{% endif %}">
+  {#- G3m madde 18: sıfır sonuçta boş "Kategoriler" ve fiyat filtresi yok; filtre sütunu yerine kısa yardım kutusu #}
+  {% if sonuc.urunler %}
+  <aside class="yan" aria-label="{{ t('katalog.filtreler') }}">
+    {# K22/G3a: masaüstünde (≥1024 px) solda açık; daha dar ekranda JS'siz <details> alt çekmecesi (düğme alt kenarda sabit, liste itilmez) #}
+    <details class="cekmece">
+      <summary>{{ ikon('filtre') }}<span class="cekmece-ac">{{ t('katalog.filtrele') }}</span><span class="cekmece-kapat">{{ t('katalog.kapat') }}</span>{% if cipler %} <span class="sayac" aria-label="{{ t('katalog.filtre_adet', adet=cipler | length) }}">{{ cipler | length }}</span>{% endif %}</summary>
+      <div class="cekmece-ic">
+        <form class="filtre" method="get" action="{{ liste_yolu }}" data-otomatik-kutu>
+          {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+          {% if sorgu.siralama != siralar[0] %}<input type="hidden" name="sira" value="{{ sorgu.siralama }}">{% endif %}
+          {% if sorgu.sayfa_boyu != sayfa_boylari[0] %}<input type="hidden" name="adet" value="{{ sorgu.sayfa_boyu }}">{% endif %}
+          {#- G3k madde 8: fiyat aralığının para birimi (gösterim ₺/€ değişse de filtre anlamını korur) #}
+          <input type="hidden" name="fpb" value="{{ fiyat_para }}">
+          {#- G3j inceleme M-1: sütunun üstünde de Uygula (aynı form); alttaki yapışkan düğme kalır. Mobil çekmecede gizli
+             (orada alttaki düğme üstte yapışkan) #}
+          <div class="filtre-ust">
+            <h2 class="yan-baslik">{{ t('katalog.filtreler') }}</h2>
+            <button class="dugme dugme-kucuk filtre-ust-uygula" type="submit">{{ t('katalog.uygula') }}</button>
+          </div>
+          {% if fasetler.tip %}
+          {#- G3h madde 5: ürün tipi (ad + kategoriden türetilmiş, tip.yaml); G3j madde 9: ilk 8 açık, kalanı "daha" #}
+          {{ grup_ac('tip', t('katalog.faset_tip'), true) }}
+          <fieldset class="faset" data-faset="tip">
+            <legend>{{ t('katalog.faset_tip') }}</legend>
+            {% for s in tip_ust %}{{ secenek('tip', s.deger, tip_adlari.get(s.deger, s.deger), s) }}{% endfor %}
+            {% if tip_daha %}
+            <details class="faset-daha">
+              <summary>{{ t('katalog.faset_tip_daha', adet=tip_daha | length) }}</summary>
+              {% for s in tip_daha %}{{ secenek('tip', s.deger, tip_adlari.get(s.deger, s.deger), s) }}{% endfor %}
+            </details>
+            {% endif %}
+          </fieldset>
+          </details>
+          {% endif %}
+          {% if fasetler.durum %}
+          {#- G3k madde 10: Durum varsayılan açık, ürün tipinden hemen sonra ("Belirtilmemiş" ilk ekranda) #}
+          {{ grup_ac('durum', t('katalog.faset_durum'), true) }}
+          <fieldset class="faset" data-faset="durum">
+            <legend>{{ t('katalog.faset_durum') }}</legend>
+            {#- G3m madde 9: "2. el" ile "2. el – test edildi" farkı altta kısa not (garanti sayfası tanımları); inceleme m3:
+               aynı metni tekrar eden seçenek title'ı yok (sayfa boyutu) #}
+            {% for s in fasetler.durum %}{{ secenek('durum', s.deger, durum_adlari.get(s.deger, s.deger), s) }}{% endfor %}
+            {%- set aciklamalar = durum_aciklamali | select('in', fasetler.durum | map(attribute='deger') | list) | list %}
+            {#- inceleme m7: not kapalı <details> (tek satır özet); filtre sütunu ≤ 1,5 ekran kalır #}
+            {% if aciklamalar %}<details class="faset-daha durum-aciklama"><summary>{{ t('durum.aciklama_ozet') }}</summary><p class="alan-ipucu">{% for d in aciklamalar %}{% if not loop.first %} · {% endif %}{{ t('durum.aciklama_' ~ d) }}{% endfor %}</p></details>{% endif %}
+          </fieldset>
+          </details>
+          {% endif %}
+          {% if fasetler.stok %}
+          {#- G3j madde 5: stokta = alınabilir stok; tümü ayrılmışlar "Ayrılmış (yakında serbest)" #}
+          {{ grup_ac('stok', t('katalog.faset_stok'), true) }}
+          <fieldset class="faset" data-faset="stok">
+            <legend>{{ t('katalog.faset_stok') }}</legend>
+            {% for s in fasetler.stok %}{{ secenek(s.deger, '1', t('katalog.faset_' ~ s.deger, gun=havale_gun), s) }}{% endfor %}
+          </fieldset>
+          </details>
+          {% endif %}
+          {% if fasetler.marka %}
+          {{ grup_ac('marka', t('katalog.faset_marka'), true) }}
+          <fieldset class="faset" data-faset="marka">
+            <legend>{{ t('katalog.faset_marka') }}</legend>
+            {#- G3h madde 7: seçili markalar her zaman üstte; kalanlar alfabetik, harf başlıklı #}
+            {% for s in marka_ust %}{{ secenek('marka', s.deger, s.deger, s) }}{% endfor %}
+            {% if marka_harfler %}
+            <details class="faset-daha">
+              <summary>{{ t('katalog.faset_daha', adet=marka_kalan_sayi) }}</summary>
+              {% for harf, grup in marka_harfler %}<p class="faset-harf">{{ harf }}</p>
+              {% for s in grup %}{{ secenek('marka', s.deger, s.deger, s) }}{% endfor %}{% endfor %}
+            </details>
+            {% endif %}
+          </fieldset>
+          </details>
+          {% endif %}
+          {% if fasetler.fiyat %}
+          {{ grup_ac('fiyat', t('katalog.faset_fiyat'), true) }}
+          <fieldset class="faset" data-faset="fiyat">
+            <legend>{{ t('katalog.faset_fiyat') }}</legend>
+            {% for s in fasetler.fiyat %}{{ secenek(s.deger, '1', t('katalog.faset_' ~ s.deger), s) }}{% endfor %}
+          </fieldset>
+          </details>
+          {% endif %}
+          {% if fasetler.kategori %}
+          {%- set kat_baslik = t('katalog.faset_kategori') if kategori else t('katalog.kategoriler') %}
+          {{ grup_ac('kategori', kat_baslik, fasetler.kategori | selectattr('secili') | list) }}
+          <fieldset class="faset" data-faset="kategori">
+            <legend>{{ kat_baslik }}</legend>
+            {% for s in fasetler.kategori %}{{ secenek('kat', s.deger, kat_ad(kategori_adlari.get(s.deger | int, s.deger)), s) }}{% endfor %}
+          </fieldset>
+          </details>
+          {% endif %}
+          <fieldset class="alan faset-fiyat-araligi">
+            <legend>{{ t('katalog.filtre_fiyat') }}</legend>
+            <div class="ikili">
+              <div>
+                <label for="fmin">{{ t('katalog.filtre_fmin', para=para_sembolu(fiyat_para)) }}</label>
+                <input id="fmin" name="fmin" type="text" inputmode="decimal" maxlength="20" value="{{ form.fmin }}">
+              </div>
+              <div>
+                <label for="fmax">{{ t('katalog.filtre_fmax', para=para_sembolu(fiyat_para)) }}</label>
+                <input id="fmax" name="fmax" type="text" inputmode="decimal" maxlength="20" value="{{ form.fmax }}">
+              </div>
+            </div>
+            <p class="alan-ipucu">{{ t('katalog.filtre_fiyat_not_dahil' if fiyat_kdv_dahil else 'katalog.filtre_fiyat_not_haric', para=para_sembolu(fiyat_para)) }}</p>
+          </fieldset>
+          {#- G3j madde 9/10: Uygula masaüstünde sütunun altında yapışkan (sticky bottom), mobil çekmecede üstte yapışkan
+             (Kapat = çekmece özeti, aynı satırda). Kategori ağacı formun içinde: çekmecede Uygula hep görünür #}
+          <div class="dugmeler">
+            <button class="dugme" type="submit">{{ t('katalog.uygula') }}</button>
+            {% if filtre_var %}<a class="temizle" href="{{ temizle_url }}">{{ t('katalog.temizle') }}</a>{% endif %}
+          </div>
+          <p class="alan-ipucu faset-birlesim" data-e2e="faset-birlesim">{{ t('katalog.faset_birlesim') }}</p>
+          {#- G3j madde 9: ağaç yalnız kategori sayfasında açık (tüm ürünler / aramada kategori faseti gibi kapalı) #}
+          <details class="agac-kutu"{% if kategori %} open{% endif %}>
+            <summary class="yan-baslik">{{ t('katalog.kategoriler') }}</summary>
+            {#- G3h madde 4: arama/filtre etkinken sayılar sonuç kümesinden (0 olan gizli), bağlantılar filtreyi taşır #}
+            {{ kategori_agaci(agac_gorunen, kategori.id if kategori else none, acik, onek=agac_onek, ek=agac_ek) }}
+          </details>
+        </form>
+      </div>
+    </details>
+  </aside>
+  {% else %}
+  <aside class="yan yan-bos" aria-labelledby="bos-yan-baslik">
+    <div class="bos-yan-kutu" data-e2e="bos-yan-kutu">
+      <h2 class="bos-yan-baslik" id="bos-yan-baslik">{{ ikon('arama', 'ikon-16') }}<span>{{ t('katalog.parcayi_bulun') }}</span></h2>
+      <p>{{ t('katalog.bos_teklif_metin') }}</p>
+      <p><a class="dugme ikincil dugme-kucuk" href="{{ teklif_kod_url }}">{{ t('katalog.bos_teklif_dugme') }}</a></p>
+      {% if telefon %}<p><a href="tel:{{ telefon_tel }}">{{ ikon('telefon', 'ikon-16') }} {{ telefon }}</a></p>{% endif %}
+    </div>
+  </aside>
+  {% endif %}
+
+  <section class="liste-icerik" aria-label="{{ t('katalog.sonuclar') }}">
+    {# G3a: sonuç sayısı ve sıralama her zaman ilk satır; mobilde filtre düğmesi aynı satırın solunda #}
+    <div class="liste-ust">
+      <p class="sonuc-sayisi">{{ t('katalog.sonuc_sayisi', toplam=sonuc.toplam) }}</p>
+      {{ karsilastir_git() }}
+      {{ fiyat_secici() }}
+      {% if sonuc.urunler %}
+      <form class="siralama" method="get" action="{{ liste_yolu }}" data-otomatik>
+        {% for ad, deger in siralama_gizli %}<input type="hidden" name="{{ ad }}" value="{{ deger }}">{% endfor %}
+        <label for="sira">{{ t('katalog.siralama') }}</label>
+        <select id="sira" name="sira">
+          {% for s in siralar %}<option value="{{ s }}"{% if sorgu.siralama == s %} selected{% endif %}>{{ t('katalog.sira_' ~ s) }}</option>{% endfor %}
+        </select>
+        <label for="adet">{{ t('katalog.sayfa_boyu') }}</label>
+        <select id="adet" name="adet">
+          {% for n in sayfa_boylari %}<option value="{{ n }}"{% if sorgu.sayfa_boyu == n %} selected{% endif %}>{{ n }}</option>{% endfor %}
+        </select>
+        <button class="dugme ikincil js-gizle" type="submit">{{ t('katalog.sirala') }}</button>
+      </form>
+      {% endif %}
+    </div>
+    {#- G3h madde 2: VE ile sonuç yok, VEYA sonuçları gösteriliyor; her terim tek başına (aynı filtrelerle) #}
+    {#- G3j madde 6: kod biçimli sorgu sonuçsuz: gevşetme yok; aynı seri ve teklif bağlantısı #}
+    {% if kod_yok and kod_yok.filtresiz %}<div class="kod-yok" role="status" data-e2e="kod-filtre-yok"><p><strong>{{ t('katalog.kod_filtre_yok') }}</strong> — <a href="{{ kod_yok.temizle_url }}" data-e2e="filtreleri-kaldir">{{ t('katalog.filtreleri_kaldir', n=kod_yok.filtresiz) }}</a></p></div>
+    {% elif kod_yok %}<div class="kod-yok" role="status" data-e2e="kod-yok"><p><strong>{{ t('katalog.kod_yok', q=kod_yok.q) }}</strong></p><p>{% if kod_yok.seri_url %}<a href="{{ kod_yok.seri_url }}" data-e2e="ayni-seri">{{ t('katalog.ayni_seri', seri=kod_yok.seri, n=kod_yok.sayi) }}</a> · {% endif %}<a href="{{ teklif_kod_url }}" data-e2e="parcayi-bulun">{{ t('katalog.parcayi_bulun') }}</a></p>
+    {#- G3l madde 3: en uzun ortak katlanmış önekli en çok 5 ürün #}
+    {%- if kod_yok.yakin %}<div class="yakin-kodlar"><p>{{ t('katalog.yakin_kodlar') }}</p><ul>{% for u, kod in kod_yok.yakin %}<li><a href="/{{ dil }}/urun/{{ u.id }}">{% if kod %}{{ kod }}{% else %}{{ urun_ad(u.id, u.ad) }}{% endif %}</a>{% if kod %} — {{ urun_ad(u.id, u.ad) }}{% endif %}</li>{% endfor %}</ul></div>{% endif %}</div>{% endif %}
+    {% if gevset %}<p class="gevset" role="status">{{ t('katalog.gevset', q=q) }} {% for g in gevset %}{% if g.url %}<a href="{{ g.url }}">{{ g.metin }}</a>{% else %}{{ g.metin }}{% endif %} ({{ g.sayi }}){% if not loop.last %} · {% endif %}{% endfor %}</p>
+    {#- G3l madde 1: yalnız nadir terimi içerenler gösteriliyor; yaygın terimin ürünleri bağlantıyla #}
+    {%- if gevset_genis %}<p class="gevset-genis"><a href="{{ gevset_genis.url }}">{{ t('katalog.gevset_genis', terimler=gevset_genis.terimler, n=gevset_genis.sayi) }}</a></p>{% endif %}{% endif %}
+    {% if hizli_cipler %}
+    <ul class="hizli-cipler" aria-label="{{ t('katalog.hizli_filtreler') }}">
+      {% for h in hizli_cipler %}<li><a class="hizli-cip{% if h.secili %} secili{% endif %}" href="{{ h.url }}" data-e2e="hizli-cip">{% if h.secili %}{{ ikon('kontrol', 'ikon-16') }}{% endif %}{{ t('katalog.hizli_' ~ h.ad) }} <span class="sayi">{{ h.sayi }}</span>{% if h.secili %}<span class="gizli"> – {{ t('katalog.cip_kaldir') }}</span>{% endif %}</a></li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if sonuc.urunler %}
+      {{ cip_listesi(true) }}
+      <div class="urun-tablo-sar">
+        <table class="urun-tablo">
+          <caption class="gizli">{{ t('katalog.tablo_baslik') }}</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="ut-gorsel"><span class="gizli">{{ t('katalog.sutun_gorsel') }}</span></th>
+              <th scope="col">{{ t('katalog.sutun_urun') }}</th>
+              <th scope="col">{{ t('katalog.sutun_durum') }}</th>
+              <th scope="col">{{ t('katalog.sutun_stok') }}</th>
+              <th scope="col" class="sayi">{{ t('katalog.sutun_fiyat') }}</th>
+              <th scope="col"><span class="gizli">{{ t('katalog.sutun_islem') }}</span></th>
+            </tr>
+          </thead>
+          <tbody>
+{#- G3h: satır içi girinti atıldı (48 ürünlük sayfa < 150 KB); görünüm aynı #}
+{% for u in sonuc.urunler %}
+{#- G3h madde 15 / inceleme M-3: "tam kod" ipucu yok (satır tam kodu zaten gösterir); önek iç stok koduyla (SKU)
+   eşleştiyse ve üretici kodu varsa mobil kartta gizli stok kodu bu satırda gösterilir (ut-onek-sku) #}
+<tr class="ut-satir{% if u.id in tam_eslesenler %} ut-tam{% endif %}{% if u.uretici_kodu and onek_eslesenler.get(u.id) == u.sku %} ut-onek-sku{% endif %}" id="urun-{{ u.id }}">
+<td class="ut-gorsel"><img src="{{ gorsel_adresi(u) }}" data-yedek="{{ yer_tutucu(u.kok_kategori_ad) }}" alt="" width="48" height="48" loading="lazy" decoding="async"></td>
+<td class="ut-urun">
+{% if u.id in tam_eslesenler %}<span class="rozet rozet-tam" data-e2e="tam-eslesme">{{ t('katalog.tam_eslesme') }}</span>
+{%- elif u.id in onek_eslesenler %}<span class="rozet rozet-onek" data-e2e="onek-eslesme">{{ t('katalog.onek_eslesme') }}</span>
+{%- endif %}
+<span class="ut-kodlar">{{ parca_kodlari(u) }}</span>
+<a href="/{{ dil }}/urun/{{ u.id }}" data-e2e="urun-baglanti">{{ urun_ad(u.id, u.ad) }}</a>
+{{ yerel_bildirim(u.id) }}
+</td>
+<td class="ut-durum">
+{%- if u.durum_kodu != 'belirtilmemis' %}<span class="rozet rozet-durum"{{ durum_title(u.durum_kodu) }}>{{ t('durum.' ~ u.durum_kodu) }}</span>{% if u.durum_ornek %} <span class="rozet rozet-ornek" title="{{ t('katalog.ornek_rozet_title') }}">{{ t('katalog.ornek_rozet') }}</span>{% endif %}
+{%- else %}<span class="ut-bos">{{ t('katalog.durum_yok') }}</span>{% endif -%}
+</td>
+<td class="ut-stok">
+{%- if tumu_ayrilmis(u) %}<span class="stok-tedarik stok-ayrilmis">{{ ikon('uyari', 'ikon-16') }} {{ ayrilmis_metni(u) }}</span>
+{#- G3n madde 6: stoklu satırda ürün sayfasıyla aynı teslim metni; kisa yalnız ülke seçilmemişken ("Teslim tarihi: ülke seçin") #}
+{%- elif u.stok > 0 %}<span class="stok-var">{{ ikon('kontrol', 'ikon-16') }} {{ t('urun.stokta', adet=musait(u)) }}</span> <span class="ut-teslim">{{ teslim_notu(u, kisa=true) }}</span>
+{%- else %}<span class="stok-tedarik">{{ ikon('kamyon', 'ikon-16') }} {{ teslim_notu(u, kisa=true) }}</span>{% endif -%}
+</td>
+<td class="ut-fiyat">{% if u.teklif_zorunlu %}<span class="fiyat-teklif-kisa">{{ t('urun.fiyat_teklifle_kdv' if u.kdv_gecersiz else 'urun.fiyat_teklifle') }}</span>{% else %}{{ fiyat_kisa(u, fiyat_goster(u)) }}{% endif %}</td>
+<td class="ut-eylem">
+{%- if u.teklif_zorunlu or tumu_ayrilmis(u) %}
+<a class="dugme ikincil dugme-kucuk" href="/{{ dil }}/teklif?urun_id={{ u.id }}">{{ t('urun.teklif_iste') }}<span class="gizli">: {{ urun_ad(u.id, u.ad) }}</span></a>
+{%- else %}
+<form method="post" action="/{{ dil }}/sepet/ekle">
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<input type="hidden" name="urun_id" value="{{ u.id }}">
+<input type="hidden" name="adet" value="1">
+<input type="hidden" name="sonraki" value="{{ istek_yolu }}">
+<button class="dugme ikincil dugme-kucuk" type="submit">{{ ikon('sepet', 'ikon-16') }}<span>{{ t('katalog.sepete') }}</span><span class="gizli">: {{ urun_ad(u.id, u.ad) }}</span></button>
+</form>
+{%- endif %}
+{{ karsilastir_dugmesi(u, 'ut-karsilastir') }}
+</td>
+</tr>
+{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if sonuc.sayfa_sayisi > 1 %}
+      <nav class="sayfalama" aria-label="{{ t('katalog.sayfalama') }}">
+        <ul>
+          {% if onceki_url %}<li><a href="{{ onceki_url }}" rel="prev">{{ t('katalog.onceki') }}</a></li>{% endif %}
+          {% for n, url in sayfa_baglantilari %}
+          <li>{% if n == sonuc.sayfa %}<span aria-current="page">{{ n }}</span>{% else %}<a href="{{ url }}" aria-label="{{ t('katalog.sayfa_n', n=n) }}">{{ n }}</a>{% endif %}</li>
+          {% endfor %}
+          {% if sonraki_url %}<li><a href="{{ sonraki_url }}" rel="next">{{ t('katalog.sonraki') }}</a></li>{% endif %}
+          {% if son_url %}<li><a href="{{ son_url }}" aria-label="{{ t('katalog.son_etiket', n=sonuc.sayfa_sayisi) }}">{{ t('katalog.son') }}</a></li>{% endif %}
+        </ul>
+      </nav>
+      {% endif %}
+    {% else %}
+      {{ cip_listesi(false) }}
+      <div class="bos-sonuc">
+        <p class="bos-baslik">{{ ikon('arama', 'ikon-24') }}<strong>{{ t('katalog.bos_sonuc') }}</strong></p>
+        <ul class="bos-oneriler">
+          {% if q %}<li>{{ t('katalog.bos_oneri_yazim') }}</li>{% endif %}
+          {% if filtre_var %}<li><a href="{{ temizle_url }}">{{ t('katalog.bos_oneri_filtre') }}</a></li>{% endif %}
+        </ul>
+        <div class="bos-teklif">
+          {# G3a madde 9: "Parçayı bulamadınız mı?" — 3 alanlı kısa talep; aranan kod önceden dolu #}
+          <h2 class="bos-teklif-baslik">{{ t('katalog.bos_teklif_baslik') }}</h2>
+          <p>{{ t('katalog.bos_teklif_metin') }}</p>
+          <form class="hizli-teklif" method="post" action="/{{ dil }}/teklif/hizli" novalidate data-tek-gonderim>
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <div class="alan">
+              <label for="ht-parca">{{ t('teklif.parca_kodu') }}</label>
+              <input id="ht-parca" name="parca_kodu" value="{{ q }}" maxlength="100" required autocomplete="off" spellcheck="false">
+            </div>
+            <div class="alan">
+              <label for="ht-ad">{{ t('teklif.ad') }}</label>
+              <input id="ht-ad" name="ad" maxlength="120" required autocomplete="name">
+            </div>
+            <div class="alan">
+              <label for="ht-iletisim">{{ t('teklif.iletisim_alani') }}</label>
+              <input id="ht-iletisim" name="iletisim" maxlength="254" required autocomplete="tel" aria-describedby="ht-iletisim-ipucu">
+            </div>
+            {% include "_hizli_talep_ek.html" %}
+            <button class="dugme" type="submit" data-e2e="hizli-teklif-gonder">{{ t('teklif.hizli_gonder') }}</button>
+          </form>
+          <p class="alan-ipucu"><a href="{{ teklif_kod_url }}">{{ t('katalog.bos_teklif_dugme') }}</a>{% if telefon %} · <a href="tel:{{ telefon_tel }}">{{ ikon('telefon', 'ikon-16') }} {{ telefon }}</a>{% endif %}</p>
+        </div>
+        <p>{{ t('katalog.bos_oneri_kategori') }}</p>
+        <ul class="etiketler">
+          {% for d in agac if d.urun_sayisi %}<li><a href="/{{ dil }}/kategori/{{ d.kategori.id }}">{{ kat_ad(d.kategori.ad) }}</a></li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

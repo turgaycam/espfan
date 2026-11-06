@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.db
+*.db-wal
+*.db-shm
+/ortam
+e2e/ciktilar/
+.superpowers/
+e2e/ekranlar/

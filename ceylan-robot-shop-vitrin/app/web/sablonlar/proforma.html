@@ -1,0 +1,112 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import ikon with context %}
+{% block baslik %}{{ t('pb.baslik') }} · {{ siparis.no }}{% endblock %}
+{% block icerik %}
+{#- G3i madde 7: havale siparişinin proforma faturası (yalnız sahibi). Yazdırmada üst bant / alt bilgi gizli, belge tek
+   sayfa A4 (site.css @media print); logo belgenin içindedir. #}
+{% set a = siparis.fatura_adresi %}
+<article class="proforma-belge" data-e2e="proforma-belge" aria-labelledby="pb-baslik">
+  <header class="pb-ust">
+    <img class="pb-logo" src="/statik/marka/ceylan-robot-logo.png" alt="Ceylan Robot" width="1294" height="233">
+    <div class="pb-kimlik">
+      <h1 id="pb-baslik">{{ t('pb.baslik') }}</h1>
+      {#- inceleme M-4: ödenmiş / süresi dolmuş siparişte belge ödeme talimatı değildir #}
+      {% if siparis.durum not in ('odeme_bekliyor',) %}<p class="pb-durum" data-e2e="pb-durum">{{ t('pb.durum_odendi' if siparis.durum not in ('suresi_doldu',) else 'pb.durum_suresi_doldu') }}</p>{% endif %}
+      <dl class="pb-bilgi">
+        <dt>{{ t('pb.siparis_no') }}</dt><dd class="parca-no">{{ siparis.no }}</dd>
+        <dt>{{ t('pb.duzenlenme') }}</dt><dd>{{ tarih_gun(siparis.olusturma) }}</dd>
+        <dt>{{ t('pb.gecerlilik') }}</dt><dd>{% if siparis.odeme_son_tarih %}{{ tarih_tz(siparis.odeme_son_tarih, siparis.teslimat_ulkesi) }}{% else %}—{% endif %}</dd>
+        {% if siparis.musteri_po %}<dt>{{ t('siparis.po') }}</dt><dd class="parca-no">{{ siparis.musteri_po }}</dd>{% endif %}
+      </dl>
+    </div>
+  </header>
+
+  <div class="pb-taraflar">
+    <section class="pb-taraf" aria-labelledby="pb-satici">
+      <h2 id="pb-satici">{{ t('pb.satici') }}</h2>
+      <dl>
+        <dt>{{ t('pb.unvan') }}</dt><dd>{{ satici_unvan }}</dd>
+        <dt>{{ t('pb.vkn') }}</dt><dd>{% if satici_vkn %}<span class="parca-no">{{ satici_vkn }}</span>{% else %}<span class="pb-demo">{{ t('pb.demo_doldurulacak') }}</span>{% endif %}</dd>
+        <dt>{{ t('pb.vergi_dairesi') }}</dt><dd>{% if satici_vergi_dairesi %}{{ satici_vergi_dairesi }}{% else %}<span class="pb-demo">{{ t('pb.demo_doldurulacak') }}</span>{% endif %}</dd>
+        <dt>{{ t('pb.adres') }}</dt><dd>{{ satici_adres }}</dd>
+      </dl>
+    </section>
+    <section class="pb-taraf" aria-labelledby="pb-alici">
+      <h2 id="pb-alici">{{ t('pb.alici') }}</h2>
+      <dl>
+        {#- G3i inceleme I-1: sipariş anındaki alıcı (baglam.siparis_alicisi) #}
+        <dt>{{ t('pb.unvan') }}</dt><dd>{{ alici.ad }}</dd>
+        {% if alici.tip == 'kurumsal' %}
+        <dt>{{ t('pb.vkn') }}</dt><dd class="parca-no">{{ alici.vkn or '—' }}</dd>
+        <dt>{{ t('pb.vergi_dairesi') }}</dt><dd>{{ alici.vergi_dairesi or '—' }}</dd>
+        {% else %}
+        <dt>VAT ID</dt><dd class="parca-no">{{ alici.vat_id or '—' }}</dd>
+        {% endif %}
+        {#- G3k madde 17: unvan ayrı satırda; adres satırında tekrarlanmaz (fatura adresindeki ad unvandan farklıysa
+           "İlgili" satırı); telefon ayrı satır #}
+        {% if a.ad_soyad and a.ad_soyad | lower != (alici.ad or '') | lower %}<dt>{{ t('pb.ilgili') }}</dt><dd>{{ a.ad_soyad }}</dd>{% endif %}
+        <dt>{{ t('pb.adres') }}</dt><dd>{{ a.satir1 }}{% if a.satir2 %}, {{ a.satir2 }}{% endif %}, {% if a.posta_kodu %}{{ a.posta_kodu }} {% endif %}{{ a.sehir }} / {{ a.ulke }}</dd>
+        {% if a.telefon %}<dt>{{ t('odeme.telefon') }}</dt><dd>{{ a.telefon }}</dd>{% endif %}
+      </dl>
+    </section>
+  </div>
+
+  <div class="tablo-sar">
+  <table class="pb-kalemler">
+    <thead><tr>
+      <th scope="col">{{ t('pb.parca_no') }}</th>
+      <th scope="col">{{ t('pb.urun') }}</th>
+      <th scope="col" class="sayi">{{ t('pb.adet') }}</th>
+      <th scope="col" class="sayi">{{ t('pb.birim') }}</th>
+      <th scope="col" class="sayi">{{ t('pb.kdv') }}</th>
+      <th scope="col" class="sayi">{{ t('pb.tutar') }}</th>
+    </tr></thead>
+    <tbody>
+      {% for s in satirlar %}
+      <tr>
+        <td class="parca-no">{{ s.kod }}</td>
+        <td>{{ urun_ad(s.kalem.urun_id, s.kalem.ad) }}</td>
+        <td class="sayi">{{ s.kalem.adet }}</td>
+        <td class="sayi">{{ para(s.birim, siparis.para_birimi) }}</td>
+        <td class="sayi">{{ t('pb.kdv_orani', oran=s.oran) }} · {{ para(s.kalem.kdv, siparis.para_birimi) }}</td>
+        <td class="sayi">{{ para(s.kalem.net, siparis.para_birimi) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <dl class="pb-toplam">
+    {% for x in toplamlar %}
+    <dt{% if loop.last %} class="toplam"{% endif %}>{{ t(x.etiket) }}</dt><dd class="tutar{% if loop.last %} toplam{% endif %}">{{ para(x.tutar, siparis.para_birimi) }}{% if x.eur is not none %} <span class="pb-eur">≈ {{ para(x.eur, 'EUR') }}</span>{% endif %}{% if loop.last and siparis.teslim_yontemi == 'yurtdisi_dap' %} <small class="tutar-yalniz-mal" data-e2e="pb-yalniz-mal">{{ t('proforma.tutar_yalniz_mal') }}</small>{% endif %}</dd>
+    {#- G3k madde 3: DAP siparişte navlun ayrı satır (tutar yok; toplamlara dahil değil) #}
+    {% if loop.first and siparis.teslim_yontemi == 'yurtdisi_dap' %}<dt data-e2e="pb-navlun">{{ t('pb.navlun') }}</dt><dd>{{ t('pb.navlun_deger') }}</dd>{% endif %}
+    {% endfor %}
+  </dl>
+  {% if siparis.ihracat_istisnasi %}<p class="pb-not" data-e2e="pb-ihracat-dayanak">{{ t('pb.ihracat_dayanak') }}</p>{% endif %}
+  <p class="pb-not">{{ t('pb.birim_notu') }}</p>
+  {% if siparis.kur %}<p class="pb-kur">{{ t('pb.kur', kur=kur_metni, tarih=tarih(siparis.kur_tarihi) if siparis.kur_tarihi else '') }}{% if eur_karsilik %} {{ t('pb.eur_not') }}{% endif %}</p>{% endif %}
+  {% if siparis.teslim_yontemi == 'yurtdisi_dap' %}<p class="pb-not">{{ t('tutar.navlun_notu') }}</p>{% endif %}
+
+  <section class="pb-banka" aria-labelledby="pb-banka-baslik">
+    <h2 id="pb-banka-baslik">{{ t('pb.banka_baslik') }}</h2>
+    <dl>
+      <dt>{{ t('proforma.alici') }}</dt><dd>{{ satici_unvan }}</dd>
+      <dt>{{ t('proforma.banka') }}</dt><dd>{{ t('proforma.banka_deger') }}</dd>
+      {% if siparis.para_birimi == 'TRY' %}
+      <dt>IBAN (TL)</dt><dd class="parca-no">{{ t('proforma.iban_deger') }}</dd>
+      {% else %}
+      <dt>IBAN (EUR)</dt><dd class="parca-no">{{ t('proforma.iban_eur_deger') }}</dd>
+      <dt>SWIFT/BIC</dt><dd class="parca-no">{{ t('proforma.swift_deger') }}</dd>
+      {% endif %}
+      <dt>{{ t('proforma.aciklama_satiri') }}</dt><dd class="parca-no">{{ siparis.no }}</dd>
+      <dt>{{ t('proforma.tutar') }}</dt><dd class="tutar">{{ para(siparis.toplam, siparis.para_birimi) }}</dd>
+    </dl>
+    {#- G3m madde 23: EUR (uluslararası) havalede banka masrafı talimatı (temsili) #}
+    {% if siparis.para_birimi != 'TRY' %}<p class="pb-not" data-e2e="pb-banka-masraf">{{ t('odeme.banka_masraf') }}</p>{% endif %}
+  </section>
+  {% if yurtdisi %}<p class="pb-not" data-e2e="pb-gtip">{{ t('pb.gtip') }}</p>{% endif %}
+  <p class="pb-not">{{ t('pb.demo_not') }}</p>
+  <p class="pb-eylem"><a href="/{{ dil }}/hesabim/siparis/{{ siparis.no }}">{{ t('pb.geri') }}</a> · <span>{{ t('pb.yazdir_ipucu') }}</span></p>
+</article>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "yonetim/_taban.html" %}
+{% from "_makrolar.html" import ikon with context %}
+{% block baslik %}{{ t('yonetim.giris_baslik') }}{% endblock %}
+{% block icerik %}
+<section class="yonetim-giris">
+  <h1>{{ ikon('kalkan') }} {{ t('yonetim.giris_baslik') }}</h1>
+  {% if hata %}<div class="form-hata-ozet" role="alert" tabindex="-1" data-hata-ozet><p>{{ t(hata) }}</p></div>{% endif %}
+  <form method="post" action="/yonetim/giris" class="form" data-tek-gonderim>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="alan">
+      <label for="kullanici">{{ t('yonetim.kullanici') }}</label>
+      <input id="kullanici" name="kullanici" type="text" value="{{ kullanici }}" maxlength="200" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+    </div>
+    <div class="alan">
+      <label for="parola">{{ t('yonetim.parola') }}</label>
+      <input id="parola" name="parola" type="password" maxlength="200" autocomplete="current-password" required>
+    </div>
+    <button type="submit" class="dugme dugme-tam" data-e2e="yonetim-giris">{{ t('yonetim.giris') }}</button>
+  </form>
+</section>
+{% endblock %}

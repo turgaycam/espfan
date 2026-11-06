@@ -1,0 +1,17 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import metin_alani, ikon with context %}
+{% block baslik %}{{ t('hesap.giris_baslik') }}{% endblock %}
+{% block icerik %}
+<h1>{{ t('hesap.giris_baslik') }}</h1>
+{% include "_odeme_hesap_notu.html" %}
+{% if hata_anahtar %}<div class="form-hata-ozet" role="alert" tabindex="-1" data-hata-ozet><p><a href="#a-eposta">{{ t(hata_anahtar) }}</a></p></div>{% endif %}
+<form class="form" method="post" action="/{{ dil }}/giris">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="sonraki" value="{{ sonraki }}">
+  {{ metin_alani('eposta', t('hesap.eposta'), deger=eposta, tur='email', otomatik='username', zorunlu=true) }}
+  {{ metin_alani('parola', t('hesap.parola'), tur='password', otomatik='current-password', zorunlu=true) }}
+  <button class="dugme" type="submit">{{ t('hesap.giris_yap') }}</button>
+  <p>{{ t('hesap.uye_degil') }} <a href="/{{ dil }}/kayit{% if sonraki %}?sonraki={{ sonraki | urlencode | replace('/', '%2F') }}{% endif %}">{{ t('nav.kayit') }}</a></p>
+</form>
+{% if sepet_adet %}<div class="giris-sepet-teklif">{% include "_sepet_teklif.html" %}</div>{% endif %}
+{% endblock %}

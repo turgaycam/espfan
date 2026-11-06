@@ -1,0 +1,162 @@
+{% from "_makrolar.html" import ikon %}<!doctype html>
+<html lang="{{ dil }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% if seo.robots %}<meta name="robots" content="{{ seo.robots }}">
+{% endif %}<title>{% if seo.baslik %}{{ seo.baslik }}{% else %}{% block baslik %}{{ t('genel.site_adi') }}{% endblock %} · CEYLAN ROBOT{% endif %}</title>
+<meta name="description" content="{{ seo.aciklama }}">
+{% if seo.canonical %}<link rel="canonical" href="{{ seo.canonical }}">
+{% for hl, adres in seo.alternatifler %}<link rel="alternate" hreflang="{{ hl }}" href="{{ adres }}">
+{% endfor %}{% endif %}{% if seo.og %}<meta property="og:site_name" content="Ceylan Robot">
+<meta property="og:type" content="{{ seo.og.tur }}">
+<meta property="og:title" content="{{ seo.baslik or t('genel.site_adi') }}">
+<meta property="og:description" content="{{ seo.aciklama }}">
+<meta property="og:url" content="{{ seo.og.url }}">
+<meta property="og:image" content="{{ seo.og.gorsel }}">
+<meta property="og:locale" content="{{ seo.og.yerel }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ seo.baslik or t('genel.site_adi') }}">
+<meta name="twitter:description" content="{{ seo.aciklama }}">
+<meta name="twitter:image" content="{{ seo.og.gorsel }}">
+{% endif %}{% for j in seo.json_ld %}<script type="application/ld+json">{{ j }}</script>
+{% endfor %}
+<link rel="icon" type="image/png" sizes="48x48" href="/statik/marka/favicon-48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/statik/marka/favicon-192.png">
+<link rel="apple-touch-icon" href="/statik/marka/favicon-192.png">
+<link rel="stylesheet" href="/statik/site.css">
+<script src="/statik/site.js" defer></script>
+</head>
+<body>
+<a class="atla" href="#icerik">{{ t('genel.icerige_atla') }}</a>
+<div class="ust-bant">
+  <div class="ust-bant-ic">
+    <div class="demo-bandi" role="note"><span class="demo-uzun">{{ t('genel.demo_bandi') }}</span><span class="demo-kisa" aria-hidden="true">{{ t('genel.demo_kisa') }}</span></div>
+    {% if telefon %}
+    <p class="ust-iletisim"><a class="ust-tel" href="tel:{{ telefon_tel }}" aria-label="{{ t('genel.telefon_etiket') }}: {{ telefon }}">{{ ikon('telefon') }}<span class="ust-iletisim-etiket">{{ t('genel.telefon_etiket') }}</span><span class="ust-iletisim-kisa" aria-hidden="true">{{ t('genel.telefon_kisa') }}</span> <span class="ust-tel-no">{{ telefon }}</span></a></p>
+    {% endif %}
+    <form class="tercih" action="/tercih" method="post" data-otomatik>
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="sonraki" value="{{ istek_yolu }}">
+      {{ ikon('dunya', 'tercih-ikon') }}
+      <label for="sec-dil" class="tercih-etiket">{{ t('nav.dil') }}</label>
+      <select id="sec-dil" name="dil">
+        {#- G3e madde 22: kısa kod (360 px'te kırpılmaz); tam ad title'da #}
+        {% for d in diller %}<option value="{{ d }}"{% if d == dil %} selected{% endif %} title="{{ t('dil.' ~ d) }}">{{ d | upper }}</option>{% endfor %}
+      </select>
+      <label for="sec-ulke" class="tercih-etiket">{{ t('nav.ulke') }}</label>
+      <select id="sec-ulke" name="ulke">
+        {% if not ulke %}<option value="" selected>{{ t('nav.ulke_sec') }}</option>{% endif %}
+        {% for u in ulkeler %}<option value="{{ u }}"{% if u == ulke %} selected{% endif %}>{{ t('ulke.' ~ u) }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="js-gizle">{{ t('nav.uygula') }}</button>
+    </form>
+  </div>
+</div>
+{% block ust_baslik %}
+<header class="ust">
+  <div class="ust-ic">
+    <a class="logo" href="/{{ dil }}/"><img class="logo-resim" src="/statik/marka/ceylan-robot-logo.png" alt="Ceylan Robot" width="1294" height="233"></a>
+    <form class="arama" action="/{{ dil }}/ara" method="get" role="search">
+      <label for="ust-arama" class="gizli">{{ t('nav.ara_etiket') }}</label>
+      <input id="ust-arama" type="search" name="q" value="{{ arama_q }}" placeholder="{{ t('nav.ara_ipucu') }}" maxlength="100" autocomplete="off" spellcheck="false">
+      <button type="submit">{{ ikon('arama') }}<span class="arama-etiket">{{ t('nav.ara') }}</span></button>
+    </form>
+    <nav class="hesap-nav" aria-label="{{ t('nav.hesap') }}">
+      {# G3c madde 22: B2B teklif girişi her sayfada (ikincil stil); madde 24: karşılaştırma sayacı (liste boşken yok) #}
+      <a class="nav-oge nav-teklif" href="/{{ dil }}/teklif" data-e2e="ust-teklif">{{ ikon('dosya') }}<span class="nav-etiket">{{ t('nav.teklif_al') }}</span></a>
+      {% if karsilastirma %}<a class="nav-oge karsilastir-bag" href="/{{ dil }}/karsilastir" data-e2e="karsilastir-sayac">{{ ikon('karsilastir') }}<span class="nav-etiket">{{ t('nav.karsilastir') }}</span> <span class="sayac" aria-label="{{ t('nav.karsilastir_adet', adet=karsilastirma | length) }}">{{ karsilastirma | length }}</span></a>{% endif %}
+      {% if musteri %}
+        <a class="nav-oge" href="/{{ dil }}/hesabim">{{ ikon('kullanici') }}<span class="nav-etiket">{{ musteri.ad }}</span></a>
+        <form method="post" action="/{{ dil }}/cikis">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit" class="bag nav-oge" data-e2e="cikis">{{ t('nav.cikis') }}</button>
+        </form>
+      {% else %}
+        <a class="nav-oge" href="/{{ dil }}/giris">{{ ikon('kullanici') }}<span class="nav-etiket">{{ t('nav.giris') }}</span></a>
+        <a class="nav-oge nav-kayit" href="/{{ dil }}/kayit">{{ t('nav.kayit') }}</a>
+      {% endif %}
+      <a class="nav-oge sepet-bag" href="/{{ dil }}/sepet">{{ ikon('sepet') }}<span class="nav-etiket">{{ t('nav.sepet') }}</span> <span class="sayac" aria-label="{{ t('nav.sepet_adet', adet=sepet_adet) }}">{{ sepet_adet }}</span></a>
+    </nav>
+  </div>
+  {% if kok_kategoriler %}
+  <nav class="kategori-serit" aria-label="{{ t('katalog.kategoriler') }}">
+    <ul>
+      <li><a href="/{{ dil }}/urunler"{% if tum_urunler %} aria-current="true"{% endif %}>{{ t('katalog.tum_urunler') }}</a></li>
+      {% for k in kok_kategoriler %}<li><a href="/{{ dil }}/kategori/{{ k.kategori.id }}"{% if k.kategori.id == aktif_kok_id %} aria-current="true"{% endif %}>{{ kat_ad(k.kategori.ad) }}</a></li>{% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
+</header>
+{% endblock %}
+{#- G3l madde 17: ürün sayfasında o ürünün karşılaştırma bildirimi yalnız çapada (satın alma kutusu); genel listede tekrar yok #}
+{% set genel_bildirimler = bildirimler | rejectattr('capa_urun', 'equalto', sayfa_urun_id) | list if sayfa_urun_id is defined else bildirimler %}
+{% if genel_bildirimler %}
+<div class="bildirimler" role="status">
+  {% for b in genel_bildirimler %}<p class="bildirim">{{ ikon('bilgi') }}<span>{{ b.metin }}{% for g in b.baglar %}{% if not loop.first %} ·{% endif %} <a href="{{ g.url }}" data-e2e="{{ g.e2e }}">{{ g.metin }}</a>{% endfor %}</span></p>{% endfor %}
+</div>
+{% endif %}
+<main id="icerik" class="sayfa">
+{% block icerik %}{% endblock %}
+{# G3c düzeltme 2: bant <main> sonunda; masaüstünde sabit (alt kenar), ≤767 px'te akışta (hiçbir eylemi örtmez).
+   JS'siz POST /cerez-onay ile kapanır; site.js tıklamada çerezi yazıp bandı sayfa yenilemeden kaldırır. #}
+{% if not cerez_onay %}
+<div id="cerez-bandi" class="cerez-bandi" role="region" aria-label="{{ t('cerez.politika') }}">
+  <p>{{ t('cerez.metin') }} <a href="/{{ dil }}/yasal/cerez">{{ t('cerez.politika') }}</a></p>
+  <form method="post" action="/cerez-onay">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="sonraki" value="{{ istek_yolu }}">
+    <button type="submit" class="dugme" id="cerez-kabul">{{ t('cerez.kabul') }}</button>
+  </form>
+</div>
+{% endif %}
+</main>
+<footer class="alt">
+  <div class="alt-ic alt-izgara">
+    <div class="alt-kol">
+      <img class="alt-logo" src="/statik/marka/ceylan-robot-logo.png" alt="Ceylan Robot" width="1294" height="233">
+      <p>{{ t('alt.not') }}</p>
+      {#- G3i madde 18: çalışma saatleri ve satış e-postası (ayarlardan; yoksa gizli) — künyedeki bilginin karşılığı #}
+      <p class="alt-iletisim" data-e2e="alt-iletisim">{{ calisma_saatleri }}{% if iletisim_eposta %} · {{ t('alt.satis_eposta') }} <a href="mailto:{{ iletisim_eposta }}">{{ iletisim_eposta }}</a>{% endif %}</p>
+    </div>
+    <div class="alt-kol">
+      <h2 class="alt-baslik">{{ t('alt.iletisim_baslik') }}</h2>
+      <p class="alt-adres"><span class="alt-etiket">{{ t('alt.adres_etiket') }}</span> {{ t('alt.adres') }}</p>
+      {% if telefon %}<p class="alt-tel"><a href="tel:{{ telefon_tel }}">{{ telefon }}</a></p>{% endif %}
+    </div>
+    <div class="alt-kol">
+      <h2 class="alt-baslik">{{ t('alt.yasal_baslik') }}</h2>
+      <ul>
+        {% for s in yasal_sayfalar %}<li><a href="/{{ dil }}/yasal/{{ s }}">{{ t('alt.yasal_' ~ s|replace('-', '_')) }}</a></li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+  {#- G3g madde 20: geri bildirim düğmesi alt bilgide akışta (içerik örtmez); sepet/ödeme/kart sayfalarında yok #}
+  {% if not gb_gizle %}<p class="gb-satiri alt-gb"><button id="gb-dugme" type="button" aria-haspopup="dialog" aria-controls="gb-pencere">{{ ikon('bilgi') }}<span class="gb-etiket">{{ t('gb.dugme') }}</span></button></p>{% endif %}
+</footer>
+<a class="gizli-iz" href="{{ bal_kupu_yolu }}" aria-hidden="true" tabindex="-1" rel="nofollow"></a>
+{% if not gb_gizle %}
+<dialog id="gb-pencere" aria-labelledby="gb-baslik">
+  <form id="gb-form" method="post" action="/geri-bildirim" data-tamam="{{ t('gb.tamam') }}" data-hata="{{ t('gb.hata') }}">
+    <h2 id="gb-baslik">{{ t('gb.baslik') }}</h2>
+    <p class="alan-ipucu">{{ t('gb.aciklama') }}</p>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="sayfa" value="{{ istek_yolu }}">
+    <div class="alan">
+      <label for="gb-isim">{{ t('gb.isim') }}</label>
+      <input id="gb-isim" name="isim" maxlength="100" autocomplete="name">
+    </div>
+    <div class="alan">
+      <label for="gb-metin">{{ t('gb.metin') }}</label>
+      <textarea id="gb-metin" name="metin" rows="5" maxlength="2000" required></textarea>
+    </div>
+    <p class="gb-durum" role="status" aria-live="polite" hidden></p>
+    <div class="dugmeler">
+      <button type="submit" class="dugme">{{ t('gb.gonder') }}</button>
+      <button type="button" class="dugme ikincil" data-kapat>{{ t('gb.kapat') }}</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
+</body>
+</html>

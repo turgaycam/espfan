@@ -1,0 +1,25 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import ikon with context %}
+{% block baslik %}{{ t('uc_d.baslik') }}{% endblock %}
+{% block icerik %}
+<section class="uc-d">
+  {% include "_adimlar.html" %}
+  <div class="uc-d-kart">
+    <p class="uc-d-banka">{{ ikon('kalkan') }} {{ t('uc_d.demo_uyari') }}</p>
+    <h1>{{ t('odeme.adim_odeme') }} <span class="baslik-ek">· {{ t('uc_d.baslik') }}</span></h1>
+    <p>{{ t('uc_d.aciklama', son4=kart_son4, tutar=para(siparis.toplam, siparis.para_birimi)) }}</p>
+    <aside class="bilgi-kutu test-kartlari" aria-label="{{ t('kart.test_kartlari') }}">
+      <p>{{ ikon('bilgi') }} <strong>{{ t('uc_d.ipucu', kod=sms_kodu) }}</strong></p>
+    </aside>
+    <form method="post" action="/{{ dil }}/odeme/{{ siparis.no }}/3d" autocomplete="off" data-tek-gonderim>
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="a" value="{{ anahtar }}">
+      <div class="alan">
+        <label for="sms_kodu">{{ t('uc_d.sms_kodu') }}</label>
+        <input id="sms_kodu" class="sms-alani" name="sms_kodu" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
+      </div>
+      <button type="submit" class="dugme dugme-buyuk dugme-tam" data-e2e="sms-gonder">{{ t('uc_d.onayla') }}</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

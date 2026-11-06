@@ -1,0 +1,67 @@
+{% extends "taban.html" %}
+{% block baslik %}{{ t('hesap.hesabim_baslik') }}{% endblock %}
+{% block icerik %}
+<h1>{{ t('hesap.hesabim_baslik') }}</h1>
+<p>{{ t('hesap.hos_geldin', ad=musteri.ad) }} · {{ t('hesap.musteri_tipi', tip=t('hesap.tip_' ~ musteri.tip.value)) }}</p>
+{#- G3i madde 9 #}
+<p class="hesabim-baglar"><a href="/{{ dil }}/hesabim/fatura" data-e2e="fatura-bilgilerim">{{ t('hesap.fatura_bilgilerim') }}</a></p>
+
+<section aria-labelledby="b-siparis">
+  <h2 id="b-siparis">{{ t('hesap.siparislerim') }}</h2>
+  {% if siparisler %}
+  <div class="tablo-sar">
+    <table class="tablo">
+      <thead><tr>
+        <th scope="col">{{ t('hesap.sutun_no') }}</th>
+        <th scope="col">{{ t('hesap.sutun_tarih') }}</th>
+        <th scope="col">{{ t('hesap.sutun_durum') }}</th>
+        <th scope="col" class="sayi">{{ t('hesap.sutun_toplam') }}</th>
+      </tr></thead>
+      <tbody>
+      {% for s in siparisler %}
+        <tr>
+          <td><a href="/{{ dil }}/hesabim/siparis/{{ s.no }}">{{ s.no }}</a> · <a href="/{{ dil }}/hesabim/siparis/{{ s.no }}" class="siparis-ayrinti-bag" data-e2e="siparis-ayrinti">{{ t('hesap.siparis_ayrinti') }}</a>{% if s.musteri_po %}<span class="hesabim-po">{{ t('siparis.po') }}: <span class="parca-no">{{ s.musteri_po }}</span></span>{% endif %}</td>
+          <td>{{ tarih_tz(s.olusturma, s.teslimat_ulkesi) }}</td>
+          <td>{{ t('siparis_durum.' ~ s.durum.value) }}</td>
+          <td class="sayi">{{ para(s.toplam, s.para_birimi) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p>{{ t('hesap.siparis_yok') }}</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="b-teklif">
+  <h2 id="b-teklif">{{ t('hesap.tekliflerim') }}</h2>
+  {% if teklifler %}
+  <div class="tablo-sar">
+    <table class="tablo">
+      <thead><tr>
+        <th scope="col">{{ t('hesap.sutun_no') }}</th>
+        <th scope="col">{{ t('hesap.sutun_tarih') }}</th>
+        <th scope="col">{{ t('hesap.sutun_urun') }}</th>
+        <th scope="col" class="sayi">{{ t('hesap.sutun_adet') }}</th>
+        <th scope="col">{{ t('hesap.sutun_durum') }}</th>
+      </tr></thead>
+      <tbody>
+      {% for tk in teklifler %}
+        <tr>
+          <td><a href="/{{ dil }}/hesabim/teklif/{{ tk.no }}">{{ tk.no }}</a></td>
+          <td>{{ tarih_tz(tk.olusturma, tk.ulke or 'TR') }}</td>
+          {#- G3l madde 11: "Genel teklif" yerine ilk kalem adı ya da girilen parça kodu #}
+          <td>{% if tk.kalemler %}{% set ilk = tk.kalemler[0] %}<a href="/{{ dil }}/urun/{{ ilk.urun_id }}">{{ urun_ad(ilk.urun_id, ilk.ad) }}</a> · {{ t('hesap.kalem_sayisi', adet=tk.kalemler | length) }}{% elif tk.urun_id %}<a href="/{{ dil }}/urun/{{ tk.urun_id }}">{{ urun_ad(tk.urun_id, tk.urun_ad) }}</a>{% elif tk.parca_kodu %}<span class="parca-no">{{ tk.parca_kodu }}</span>{% else %}{{ t('hesap.genel_teklif') }}{% endif %}</td>
+          <td class="sayi">{{ tk.adet }}</td>
+          <td>{{ t('teklif_durum.' ~ tk.durum) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p>{{ t('hesap.teklif_yok') }}</p>
+  {% endif %}
+</section>
+{% endblock %}

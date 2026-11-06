@@ -1,0 +1,96 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import fiyat, fiyat_secici, ikon, parca_kodlari, tutar_gosterimi, yerel_bildirim with context %}
+{% block baslik %}{{ t('odeme.adim_sepet') }}{% endblock %}
+{% block icerik %}
+<section class="sepet">
+  {% include "_adimlar.html" %}
+  <h1>{{ t('odeme.adim_sepet') }}</h1>
+  {% if eklendi %}<p class="basari" role="status">{{ ikon('kontrol') }}<span>{{ t('sepet.eklendi') }}</span></p>{% endif %}
+  {% if uyari %}
+  <div class="uyari" role="alert">
+    <p>{{ t(uyari) }}</p>
+    {% if teklif_urun_id %}<p><a class="dugme" href="/{{ dil }}/teklif?urun_id={{ teklif_urun_id }}" data-e2e="teklif-iste">{{ t('sepet.teklif_iste') }}</a></p>{% endif %}
+  </div>
+  {% endif %}
+  {% if dusenler %}<div class="uyari" role="alert">{{ t('sepet.dusen_urunler', adlar=dusenler|join(', ')) }}</div>{% endif %}
+  {#- G3n madde 3: tekrar ekleme hiçbir kalemi ekleyemediyse "Sepetiniz boş" yerine neden listesi #}
+  {% if tekrar_nedenleri %}
+  <div class="tekrar-nedenler uyari" role="status" data-e2e="tekrar-nedenler">
+    <p>{{ ikon('uyari', 'ikon-16') }} {{ t('sepet.tekrar_nedenler') }}</p>
+    <ul>{% for n in tekrar_nedenleri %}<li>{{ n }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  {% if not satirlar %}
+  <div class="bos-sepet">
+    {% if not tekrar_nedenleri %}<p class="bos-sepet-metin">{{ ikon('sepet', 'ikon-24') }} {{ t('sepet.bos') }}</p>{% endif %}
+    {% if kok_kategoriler %}
+    <h2>{{ t('sepet.kategoriler') }}</h2>
+    <ul class="bos-sepet-kategoriler">
+      {% for k in kok_kategoriler %}<li><a href="/{{ dil }}/kategori/{{ k.kategori.id }}">{{ kat_ad(k.kategori.ad) }}</a></li>{% endfor %}
+    </ul>
+    {% endif %}
+    <p><a class="dugme ikincil" href="/{{ dil }}/">{{ t('sepet.alisverise_don') }}</a></p>
+  </div>
+  {% else %}
+  {% if hata %}<div class="uyari" role="alert">{{ t('hata_kodu.' ~ hata) }}</div>{% endif %}
+  {{ fiyat_secici() }}
+  <div class="odeme-duzen">
+    <div class="odeme-ana">
+      <table class="tablo sepet-tablo sepet-kalemleri">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('sepet.urun') }}</th>
+            <th scope="col">{{ t('sepet.birim_fiyat') }}</th>
+            <th scope="col">{{ t('sepet.adet') }}</th>
+            <th scope="col" class="sayi">{{ t('sepet.tutar_kdv_dahil' if kdv_dahil else ('sepet.tutar_kdv_yok' if fiyat_gosterim == 'try' and not kdv_var else 'sepet.tutar_kdv_haric')) }}</th>
+            <th scope="col"><span class="gizli">{{ t('sepet.kaldir') }}</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in satirlar %}
+          <tr data-e2e="sepet-kalemi">
+            <td class="kalem-urun">
+              <a class="kalem-ad" href="/{{ dil }}/urun/{{ s.kalem.urun_id }}">{{ urun_ad(s.kalem.urun_id, s.kalem.ad) }}</a>
+              {% if s.urun %}{{ parca_kodlari(s.urun) }}{% else %}<span class="parca-no">{{ s.kalem.sku }}</span>{% endif %}
+              {% if s.urun %}<span class="not kalem-teslim" data-e2e="kalem-teslim">{{ teslim_notu(s.urun) }}</span>{% elif s.kalem.tedarik_teyit %}<span class="not">{{ t('sepet.tedarik_teyit') }}</span>{% endif %}
+              {#- G3i madde 5: tedarik süresi teklifle: sipariş engellenmez; not + istenen adetle teklif bağlantısı #}
+              {% if tedarik_teklifle(s.urun) %}<p class="not-tedarik" data-e2e="not-tedarik">{{ ikon('bilgi', 'ikon-16') }}<span>{{ t('sepet.tedarik_notu') }} · <a href="/{{ dil }}/teklif?urun_id={{ s.kalem.urun_id }}&amp;adet={{ s.kalem.adet }}">{{ t('sepet.tedarik_teklif_bag') }}</a></span></p>{% endif %}
+            </td>
+            <td class="kalem-birim" data-etiket="{{ t('sepet.birim_fiyat') }}">{% if s.urun %}{{ fiyat(s.urun, s.gosterim) }}{% endif %}</td>
+            <td class="kalem-adet" data-etiket="{{ t('sepet.adet') }}">
+              {#- G3n madde 1: tarayıcı doğrulaması (min/max/number) gönderimi sessizce engellemesin; sunucu bildirir #}
+              <form method="post" action="/{{ dil }}/sepet/adet" class="satir-formu" novalidate>
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <input type="hidden" name="urun_id" value="{{ s.kalem.urun_id }}">
+                <label class="gizli" for="adet-{{ s.kalem.urun_id }}">{{ t('sepet.adet') }}: {{ urun_ad(s.kalem.urun_id, s.kalem.ad) }}</label>
+                <input id="adet-{{ s.kalem.urun_id }}" type="text" name="adet" value="{{ s.kalem.adet }}" inputmode="numeric" size="4" maxlength="6" autocomplete="off">
+                <button type="submit" class="dugme ikincil dugme-kucuk">{{ t('sepet.guncelle') }}</button>
+              </form>
+              {{ yerel_bildirim(s.kalem.urun_id, uyari=true) }}
+            </td>
+            <td class="kalem-tutar sayi" data-etiket="{{ t('sepet.tutar_kdv_dahil' if kdv_dahil else ('sepet.tutar_kdv_yok' if fiyat_gosterim == 'try' and not kdv_var else 'sepet.tutar_kdv_haric')) }}">{% if s.tutar %}{{ tutar_gosterimi(s.tutar_gosterim, kdv_etiketi=true) }}{% endif %}</td>
+            <td class="kalem-kaldir">
+              <form method="post" action="/{{ dil }}/sepet/kaldir">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <input type="hidden" name="urun_id" value="{{ s.kalem.urun_id }}">
+                <button type="submit" class="kaldir-dugme">{{ ikon('carpi', 'ikon-16') }}<span>{{ t('sepet.kaldir') }}</span><span class="gizli">: {{ urun_ad(s.kalem.urun_id, s.kalem.ad) }}</span></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p><a href="/{{ dil }}/">{{ t('sepet.alisverise_don') }}</a></p>
+    </div>
+    <aside class="siparis-ozeti" aria-labelledby="ozet-baslik">
+      <h2 id="ozet-baslik">{{ t('odeme.ozet') }}</h2>
+      {% if tutar %}{% include "_tutar_ozeti.html" %}{% endif %}
+      {#- G3m madde 6: kargo hesaplanmışsa (TR) ve yurt dışında (DAP) ürün ve ödemeyle aynı cümle #}
+      <p class="not kargo-notu">{{ ikon('kamyon', 'ikon-16') }} {{ t('kargo.tr' if tutar and teslim == 'kargo' else ('kargo.navlun' if teslim == 'yurtdisi_dap' else 'sepet.kargo_notu')) }}</p>
+      <a class="dugme dugme-buyuk dugme-tam" href="/{{ dil }}/odeme" data-e2e="odemeye-gec">{{ t('sepet.odemeye_gec') }}</a>
+      {% include "_sepet_teklif.html" %}
+    </aside>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import ikon with context %}
+{% block baslik %}{{ t('katalog.bos_teklif_baslik') }}{% endblock %}
+{% block icerik %}
+{# G3a madde 9: kısa parça talebi formu hatalı gönderildiğinde (JS'siz yedek) #}
+{% macro alan(ad, etiket, ek='') %}
+<div class="alan{% if hatalar.get(ad) %} hatali{% endif %}">
+  <label for="ht-{{ ad }}">{{ t(etiket) }} <span class="zorunlu" aria-hidden="true">*</span></label>
+  <input id="ht-{{ ad }}" name="{{ ad }}" value="{{ alanlar[ad] }}" maxlength="{{ sinirlar[ad] }}" required aria-required="true"{% if ek %} {{ ek|safe }}{% endif %}{% if hatalar.get(ad) %} aria-invalid="true" aria-describedby="hata-{{ ad }}"{% endif %}>
+  {% if hatalar.get(ad) %}<p class="alan-hata" id="hata-{{ ad }}">{{ t(hatalar[ad]) }}</p>{% endif %}
+</div>
+{% endmacro %}
+<section class="teklif">
+  <h1>{{ t('katalog.bos_teklif_baslik') }}</h1>
+  <p class="teklif-giris">{{ t('katalog.bos_teklif_metin') }}</p>
+  {% if genel_hata %}
+  <div class="form-hata-ozet" role="alert" tabindex="-1" data-hata-ozet data-e2e="teklif-cok-deneme">
+    <p>{{ t(genel_hata) }}</p>
+    {% if telefon %}<p><a href="tel:{{ telefon_tel }}">{{ ikon('telefon', 'ikon-16') }} {{ telefon }}</a></p>{% endif %}
+  </div>
+  {% elif hata_ozeti %}
+  <div class="form-hata-ozet" role="alert" tabindex="-1" data-hata-ozet>
+    <p>{{ t('odeme.form_hatali') }}</p>
+    <ul>{% for h in hata_ozeti %}<li><a href="#{{ h.hedef }}">{{ t(h.etiket) }}: {{ t(h.hata) }}</a></li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  <form method="post" action="/{{ dil }}/teklif/hizli" class="form hizli-teklif" novalidate data-tek-gonderim>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {{ alan('parca_kodu', 'teklif.parca_kodu', 'autocomplete="off" spellcheck="false"') }}
+    {{ alan('ad', 'teklif.ad', 'autocomplete="name"') }}
+    {{ alan('iletisim', 'teklif.iletisim_alani', 'autocomplete="tel"') }}
+    {% set hizli_alanlar = alanlar %}{% set hizli_hatalar = hatalar %}
+    {% include "_hizli_talep_ek.html" %}
+    <button class="dugme" type="submit" data-e2e="hizli-teklif-gonder">{{ t('teklif.hizli_gonder') }}</button>
+  </form>
+  <p class="alan-ipucu"><a href="/{{ dil }}/teklif?kod={{ alanlar.parca_kodu | urlencode }}">{{ t('katalog.bos_teklif_dugme') }}</a></p>
+</section>
+{% endblock %}

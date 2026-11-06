@@ -1,0 +1,17 @@
+# G3h madde 9: karşılaştırma tablosunda aynı satıra birleşen teknik özellik adları. YALNIZ AÇIK EŞDEĞERLER:
+# anlamı farklı olabilecek adlar birleştirilmez ("Çıkış Voltajı" ≢ "Doğru Akım (DC) Çıkışı"; "Nominal Giriş Gerilimi"
+# ≢ "Giriş Gerilimi"). Karşılaştırma app.metin.normalize ile yapılır. Sondaki parantez yalnız etiketin kendisini öbür
+# dilde tekrarlayan bir dil ekiyse atılır ("(Input)", "(Output)", "(Giriş)", "(Çıkış)"; beyaz liste:
+# app/web/karsilastirma.py DIL_EKLERI); "(Statik)", "(Nominal)", "(kW)", "(AC)", "(MA,MB)" gibi nitelik/birim ekleri
+# korunur. Aynı üründe iki farklı etiket aynı anahtara düşerse birleştirilmez (ayrı satır). Grubun ilk adı yalnız iç
+# anahtardır; satır etiketi ürünlerde ilk görülen yazımdır. TR ve EN adlar aynı kurala uyar.
+gruplar:
+  - [Giriş Voltajı, Giriş Gerilimi]
+  - [Çıkış Voltajı, Çıkış Gerilimi]
+  - [Nominal Giriş Voltajı, Nominal Giriş Gerilimi]
+  - [Nominal Çıkış Voltajı, Nominal Çıkış Gerilimi]
+  - [Çalışma Voltajı, Çalışma Gerilimi]
+  - [Nominal Voltaj, Nominal Gerilim]
+  - [Giriş Voltaj Aralığı, Giriş Gerilim Aralığı]
+  - [Besleme Voltajı, Besleme Gerilimi]
+  - [Çevre Sıcaklığı, Ortam Sıcaklığı]

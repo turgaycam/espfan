@@ -1,0 +1,140 @@
+{% extends "yonetim/_taban.html" %}
+{% from "_makrolar.html" import ikon with context %}
+{% block baslik %}{{ t('yonetim.baslik') }}{% endblock %}
+{% block icerik %}
+<div class="yonetim">
+  {% include "yonetim/_menu.html" %}
+  <section class="yonetim-icerik" aria-labelledby="yonetim-h1">
+    <h1 id="yonetim-h1">{{ t('yonetim.menu_pano') }}</h1>
+    {% if esitleme_uyari %}
+    <div class="uyari uyari-esitleme" role="alert">{{ ikon('uyari') }}<span>{{ t('yonetim.esitleme_yok') if son_tam is none else t('yonetim.esitleme_uyari') }}</span></div>
+    {% endif %}
+    {% if not kur or kur_bayat %}
+    <div class="uyari uyari-kur" role="alert">{{ ikon('uyari') }}<span>{{ t('yonetim.kur_yok') if not kur else t('yonetim.kur_bayat') }}</span></div>
+    {% endif %}
+
+    <ul class="sayi-kartlari">
+      <li class="sayi-karti">
+        <a href="/yonetim/siparisler">
+          <span class="sayi-karti-etiket">{{ ikon('sepet') }} {{ t('yonetim.kart_yeni_siparis') }}</span>
+          <span class="sayi-karti-deger">{{ sayilar.siparis_yeni }}</span>
+          <span class="sayi-karti-not">{{ t('yonetim.kart_yeni_siparis_not') }}</span>
+        </a>
+      </li>
+      <li class="sayi-karti">
+        <a href="/yonetim/teklifler">
+          <span class="sayi-karti-etiket">{{ ikon('dosya') }} {{ t('yonetim.kart_acik_teklif') }}</span>
+          <span class="sayi-karti-deger">{{ sayilar.teklif_acik }}</span>
+          <span class="sayi-karti-not">{{ t('yonetim.kart_acik_teklif_not', sayi=sayilar.teklif_yeni) }}</span>
+        </a>
+      </li>
+      <li class="sayi-karti">
+        <a href="/yonetim/geri-bildirimler?durum=yeni">
+          <span class="sayi-karti-etiket">{{ ikon('kullanici') }} {{ t('yonetim.sayi_gb_yeni') }}</span>
+          <span class="sayi-karti-deger">{{ sayilar.gb_yeni }}</span>
+          <span class="sayi-karti-not">{{ t('yonetim.kart_yeni_gb_not') }}</span>
+        </a>
+      </li>
+      <li class="sayi-karti{% if esitleme_uyari or son_basarisiz %} sayi-karti-dikkat{% endif %}">
+        <a href="#esitleme">
+          <span class="sayi-karti-etiket">{{ ikon('dunya') }} {{ t('yonetim.kart_esitleme') }}</span>
+          {% if son %}
+          <span class="sayi-karti-deger sayi-karti-durum"><span class="rozet esitleme-{{ son['durum'] }}">{{ t('yonetim.esitleme_durum_' ~ son['durum']) }}</span></span>
+          <span class="sayi-karti-not">{% if son_basla %}{{ son_basla.strftime('%d.%m.%Y %H:%M') }} {{ t('yonetim.utc') }}{% endif %}</span>
+          {% else %}
+          <span class="sayi-karti-deger sayi-karti-durum"><span class="rozet esitleme-hata">{{ t('yonetim.kart_esitleme_yok') }}</span></span>
+          <span class="sayi-karti-not">—</span>
+          {% endif %}
+        </a>
+      </li>
+      {# G3a Ö1: kur yok/eski iken sipariş oluşturulamaz (TRY tahsilat); kart dikkat rengine geçer #}
+      <li class="sayi-karti{% if not kur or kur_bayat %} sayi-karti-dikkat{% endif %}" data-e2e="kur-karti">
+        <a href="#kur-baslik">
+          <span class="sayi-karti-etiket">{{ ikon('dunya') }} {{ t('yonetim.kart_kur') }}</span>
+          {% if kur %}
+          <span class="sayi-karti-deger sayi-karti-durum"><span class="rozet {{ 'esitleme-hata' if kur_bayat else 'esitleme-tam' }}">{{ t('yonetim.kart_kur_bayat') if kur_bayat else t('yonetim.kart_kur_guncel') }}</span></span>
+          <span class="sayi-karti-not">{{ kur.eur_satis }} ₺ · {{ kur.tarih.strftime('%d.%m.%Y') }}</span>
+          {% else %}
+          <span class="sayi-karti-deger sayi-karti-durum"><span class="rozet esitleme-hata">{{ t('yonetim.kart_kur_yok') }}</span></span>
+          <span class="sayi-karti-not">—</span>
+          {% endif %}
+        </a>
+      </li>
+    </ul>
+
+    <div class="pano-bolumler">
+      <section class="pano-bolum" id="esitleme" aria-labelledby="esitleme-baslik">
+        <h2 id="esitleme-baslik">{{ t('yonetim.esitleme') }}</h2>
+        <dl class="yonetim-ozet">
+          <dt>{{ t('yonetim.son_tam_esitleme') }}</dt>
+          <dd data-e2e="son-esitleme">{% if son_tam %}{{ son_tam.strftime('%d.%m.%Y %H:%M') }} {{ t('yonetim.utc') }}{% else %}—{% endif %}</dd>
+          <dt>{{ t('yonetim.son_esitleme') }}</dt>
+          <dd>
+            {% if son %}
+            <span class="rozet esitleme-{{ son['durum'] }}">{{ t('yonetim.esitleme_durum_' ~ son['durum']) }}</span>
+            {% if son_basla %}<span class="sayi">{{ son_basla.strftime('%d.%m.%Y %H:%M') }} {{ t('yonetim.utc') }}</span>{% endif %}
+            <p class="esitleme-sayilar">{{ t('yonetim.esitleme_sayilar', api=son['api_toplam'] if son['api_toplam'] is not none else '—', cekilen=son['cekilen'], eklenen=son['eklenen'], guncellenen=son['guncellenen'], pasiflenen=son['pasiflenen'], bozuk=son['bozuk']) }}</p>
+            {% if son['hata'] %}
+            {% if son_basarisiz %}<p class="alan-hata esitleme-hata-metni">{{ t('yonetim.hata_metni', hata=son['hata']) }}</p>
+            {% else %}<p class="esitleme-not">{{ t('yonetim.not_metni', hata=son['hata']) }}</p>{% endif %}
+            {% endif %}
+            {% else %}—{% endif %}
+          </dd>
+        </dl>
+      </section>
+
+      <section class="pano-bolum" aria-labelledby="kur-baslik">
+        <h2 id="kur-baslik">{{ t('yonetim.kur') }}</h2>
+        {% if kur %}
+        <p class="pano-kur{% if kur_bayat %} kur-bayat{% endif %}">{{ t('yonetim.kur_degeri', satis=kur.eur_satis, alis=kur.eur_alis, tarih=kur.tarih.strftime('%d.%m.%Y')) }}</p>
+        {% if kur_bayat %}<p class="uyari">{{ ikon('uyari') }}<span>{{ t('yonetim.kur_bayat') }}</span></p>{% endif %}
+        {% else %}
+        <p class="uyari">{{ ikon('uyari') }}<span>{{ t('yonetim.kur_yok') }}</span></p>
+        {% endif %}
+
+        <h2>{{ t('yonetim.sayilar') }}</h2>
+        <dl class="yonetim-ozet sayi-ozet">
+          {% for ad in sayi_listesi %}<dt>{{ t('yonetim.sayi_' ~ ad) }}</dt><dd class="sayi">{{ sayilar[ad] }}</dd>{% endfor %}
+        </dl>
+      </section>
+    </div>
+
+    <section class="pano-bolum" id="engelliler" aria-labelledby="engelli-baslik">
+      <h2 id="engelli-baslik">{{ t('yonetim.engelli_baslik') }} <span class="yonetim-sayac">{{ engelliler|length }}</span></h2>
+      <p class="alan-ipucu">{{ t('yonetim.engelli_aciklama') }}</p>
+      {% if not engelliler %}
+      <p class="yonetim-bos" data-e2e="engelli-bos">{{ t('yonetim.engelli_yok') }}</p>
+      {% else %}
+      <div class="tablo-sar">
+      <table class="tablo yonetim-tablo" data-e2e="engelli-tablo">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('yonetim.engelli_ip') }}</th><th scope="col">{{ t('yonetim.engelli_yol') }}</th>
+            <th scope="col">{{ t('yonetim.engelli_zaman') }}</th><th scope="col">{{ t('yonetim.engelli_bitis') }}</th>
+            <th scope="col">{{ t('yonetim.islem') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in engelliler %}
+          <tr>
+            <td data-etiket="{{ t('yonetim.engelli_ip') }}" class="sayi yt-no">{{ e.ip }}</td>
+            <td data-etiket="{{ t('yonetim.engelli_yol') }}">{{ e.yol }}</td>
+            <td data-etiket="{{ t('yonetim.engelli_zaman') }}" class="sayi">{{ tarih(e.engellendi) }}</td>
+            <td data-etiket="{{ t('yonetim.engelli_bitis') }}" class="sayi">{{ tarih(e.bitis) }}</td>
+            <td data-etiket="{{ t('yonetim.islem') }}" class="yt-islem">
+              <form method="post" action="/yonetim/engel/kaldir" class="satir-formu">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <input type="hidden" name="ip" value="{{ e.ip }}">
+                <button type="submit" class="dugme ikincil dugme-kucuk">{{ t('yonetim.engelli_kaldir') }}<span class="gizli">: {{ e.ip }}</span></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% endif %}
+    </section>
+  </section>
+</div>
+{% endblock %}

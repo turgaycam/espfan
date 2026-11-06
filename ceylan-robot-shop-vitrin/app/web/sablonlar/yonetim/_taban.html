@@ -1,0 +1,18 @@
+{% extends "taban.html" %}
+{# Yönetim sayfaları: DEMO bandı kalır; mağaza başlığı (arama, hesap, sepet, kategori şeridi) yerine sade yönetim başlığı #}
+{% block ust_baslik %}
+<header class="ust yonetim-ust">
+  <div class="ust-ic">
+    <div class="yonetim-marka">
+      <a class="logo" href="/yonetim"><img class="logo-resim" src="/statik/marka/ceylan-robot-logo.png" alt="Ceylan Robot" width="1294" height="233"></a>
+      <span class="yonetim-ust-etiket">· {{ t('yonetim.ust_etiket') }}</span>
+    </div>
+    {% if yonetici %}
+    <form method="post" action="/yonetim/cikis" class="yonetim-cikis">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="dugme ikincil dugme-kucuk" data-e2e="yonetim-cikis">{{ t('yonetim.cikis') }}</button>
+    </form>
+    {% endif %}
+  </div>
+</header>
+{% endblock %}

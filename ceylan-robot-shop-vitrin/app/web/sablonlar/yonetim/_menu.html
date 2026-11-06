@@ -1,0 +1,9 @@
+{% from "_makrolar.html" import ikon with context %}
+<nav class="yonetim-menu" aria-label="{{ t('yonetim.baslik') }}">
+  <p class="yonetim-menu-baslik">{{ t('yonetim.baslik') }}</p>
+  <ul>
+    {% for ad, yol, simge in [('pano', '/yonetim', 'bilgi'), ('siparisler', '/yonetim/siparisler', 'sepet'), ('teklifler', '/yonetim/teklifler', 'dosya'), ('geri_bildirimler', '/yonetim/geri-bildirimler', 'kullanici'), ('veri_kalitesi', '/yonetim/veri-kalitesi', 'uyari')] %}
+    <li><a href="{{ yol }}"{% if aktif_menu == ad %} aria-current="page"{% endif %}>{{ ikon(simge) }}<span>{{ t('yonetim.menu_' ~ ad) }}</span></a></li>
+    {% endfor %}
+  </ul>
+</nav>

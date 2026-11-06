@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 72" width="400" height="300" role="img" aria-label="Robot parçası">
+  <rect width="96" height="72" fill="#ebe7db"/>
+  <g fill="none" stroke="#4f5e48" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="28" y="28" width="26" height="18" rx="1.5"/>
+    <path d="M32 28v18M36 28v18"/>
+    <rect x="54" y="31" width="5" height="12" rx="1"/>
+    <rect x="38" y="22" width="10" height="6" rx="1"/>
+    <path d="M28 50h26"/>
+  </g>
+  <g fill="none" stroke="#a83c29" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M59 37h8"/>
+    <path d="M63 35.5v3"/>
+  </g>
+  <rect y="70" width="96" height="2" fill="#a83c29"/>
+</svg>

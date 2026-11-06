@@ -1,0 +1,69 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import urun_karti, ikon with context %}
+{% block icerik %}
+<section class="kahraman" aria-labelledby="b-kahraman">
+  <div class="kahraman-metin">
+    <h1 id="b-kahraman">{{ t('katalog.ana_baslik') }}</h1>
+    <div class="vurgu-cubuk"></div>
+    <p class="kahraman-alt">{{ t('katalog.ana_alt') }}</p>
+    <a class="dugme kahraman-cta" href="/{{ dil }}/urunler">{{ t('katalog.kahraman_cta') }} {{ ikon('ok-sag') }}</a>
+    <p class="kahraman-ipucu"><a href="#ust-arama">{{ t('katalog.kahraman_ara_notu') }}</a></p>
+  </div>
+  <ul class="kahraman-sayilar">
+    <li><strong class="sayi">{{ '{:,}'.format(toplam_urun) | replace(',', '.' if dil == 'tr' else ',') }}</strong> <span>{{ t('katalog.ana_sayi_urun') }}</span></li>
+    <li><strong class="sayi">{{ kokler | length }}</strong> <span>{{ t('katalog.ana_sayi_kategori') }}</span></li>
+  </ul>
+</section>
+
+{% if kokler %}
+<section class="ana-bolum" aria-labelledby="b-kategoriler">
+  <h2 id="b-kategoriler">{{ t('katalog.kategoriler') }}</h2>
+  <ul class="kategori-kutular">
+    {% for d in kokler %}
+    <li>
+      <a class="kategori-kutu" href="/{{ dil }}/kategori/{{ d.kategori.id }}">
+        <img class="kategori-foto" src="{{ kategori_kapak(d.kategori.ad) }}" alt="" width="960" height="600">
+        <span class="kategori-kutu-alt">
+          <span class="kategori-kutu-metin">
+            <span class="kok-ad">{{ kat_ad(d.kategori.ad) }}</span>
+            <span class="sayi">{{ t('katalog.urun_sayisi', adet=d.urun_sayisi) }}</span>
+          </span>
+          {{ ikon('ok-sag', 'kategori-ok') }}
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if one_cikanlar %}
+<section class="ana-bolum one-cikanlar" aria-labelledby="b-one">
+  <h2 id="b-one">{{ t('katalog.one_cikanlar') }}</h2>
+  <p class="temsili-ust">{{ t('katalog.temsili_ust') }}</p>
+  <ul class="izgara izgara-vitrin">
+    {% for u in one_cikanlar %}<li>{{ urun_karti(u, kapak=true) }}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="ana-bolum" aria-labelledby="b-guven">
+  <h2 id="b-guven" class="gizli">{{ t('katalog.guven_baslik') }}</h2>
+  <ul class="guven-serit">
+    <li><a href="/{{ dil }}/yasal/kullanim">{{ ikon('kontrol', 'ikon-24') }}<span><strong>{{ t('katalog.guven_test_baslik') }}</strong> {{ t('katalog.guven_test_metin') }}</span></a></li>
+    <li><a href="/{{ dil }}/yasal/kullanim#ihracat-export">{{ ikon('dunya', 'ikon-24') }}<span><strong>{{ t('katalog.guven_ihracat_baslik') }}</strong> {{ t('katalog.guven_ihracat_metin') }}</span></a></li>
+    <li><a href="{% if telefon %}tel:{{ telefon_tel }}{% else %}/{{ dil }}/teklif{% endif %}">{{ ikon('telefon', 'ikon-24') }}<span><strong>{{ t('katalog.guven_destek_baslik') }}</strong> {{ t('katalog.guven_destek_metin') }}{% if telefon %} <span class="guven-tel">{{ telefon }}</span>{% endif %}</span></a></li>
+    <li><a href="/{{ dil }}/yasal/garanti">{{ ikon('kalkan', 'ikon-24') }}<span><strong>{{ t('katalog.guven_garanti_baslik') }}</strong> {{ t('katalog.guven_garanti_metin') }}</span></a></li>
+    <li><a href="/{{ dil }}/yasal/iade">{{ ikon('dosya', 'ikon-24') }}<span><strong>{{ t('katalog.guven_iade_baslik') }}</strong> {{ t('katalog.guven_iade_metin') }}</span></a></li>
+  </ul>
+</section>
+
+<section class="robot-teklif" aria-labelledby="b-robot">
+  <div>
+    <p class="robot-teklif-ust">{{ t('katalog.robot_teklif_ust') }}</p>
+    <h2 id="b-robot">{{ t('katalog.robot_teklif_baslik') }}</h2>
+    <p>{{ t('katalog.robot_teklif_metin') }}</p>
+  </div>
+  <a class="dugme" href="/{{ dil }}/teklif">{{ t('katalog.robot_teklif_dugme') }} {{ ikon('ok-sag') }}</a>
+</section>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "taban.html" %}
+{% block baslik %}{{ baslik }}{% endblock %}
+{% block icerik %}
+<section class="hata-sayfa">
+  <p class="hata-kodu">{{ durum }}</p>
+  <h1>{{ baslik }}</h1>
+  <p>{{ aciklama }}</p>
+  {% if hata_kimligi %}
+  <p>{{ t('hata.kimlik') }}: <code class="hata-kimligi">{{ hata_kimligi }}</code></p>
+  {% endif %}
+  <p><a class="dugme" href="/{{ dil }}/">{{ t('hata.ana_sayfaya') }}</a></p>
+</section>
+{% endblock %}

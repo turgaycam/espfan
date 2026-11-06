@@ -1,0 +1,63 @@
+# G3e madde 20: arama eşanlamlıları (EN/DE terim -> katalogdaki Türkçe karşılık). Bir grubun herhangi bir terimi
+# sorguda geçerse (app.metin.normalize ile; çok kelimeli terimler bütün olarak) FTS'de grubun tüm terimleriyle
+# VEYA'lanır. Ürün adları çevrilmez; yalnız arama genişler. Kısa (3 harf ve altı) eşanlamlılar tam kelime aranır
+# ("fan" -> FANUC, "pil" -> Pilz eşleşmesin); kullanıcının kendi yazdığı kelime her zaman önek olarak aranır.
+gruplar:
+  - [güç kaynağı, güç kaynak, power supply, netzteil, stromversorgung, netzgerät, netzgeraet]
+  # G3h madde 3: "motor" artık "servo motor" ile eşanlamlı değil ("servo motor" araması asenkron motor ve
+  # motor kontaktörü getirmesin); servo motor grubu yalnız servo motor yazımlarını kapsar.
+  - [servo motor, servomotor, servo motoru]
+  # G3h madde 2: servo amplifier/amplifikatör -> sürücü. G3k madde 4: Almanca "Antrieb", "Umrichter" ve
+  # "Servoumrichter" bu gruptan çıktı (aşağıda tip kısıtlı tek yönlü gruplar)
+  - [sürücü, drive, servo drive, servo amplifier, servo amplifikatör, amplifikatör, amplifier]
+  - [kablo, cable, kabel]
+  - [teach pendant, el terminali, handbediengerät]
+  # "kartı" (sürücü kartı -> sürücü + kart)
+  - [kart, kartı, board, card, platine]
+  - [fan, lüfter]
+  - [akü, pil, battery, batterie]
+  - [redüktör, dişli kutusu, gearbox, getriebe]
+  # G3j madde 8: Almanca bileşik terimler (kullanıcının yazdığı biçim önekli aranır; katalogdaki TR karşılık VEYA'lanır)
+  - [redüktörlü motor, motor redüktör, gear motor, gearmotor, getriebemotor]
+  - [sensör, sensor]
+  - [yaklaşım sensörü, yakınlık sensörü, endüktif sensör, proximity sensor, proximity switch, näherungsschalter,
+     naeherungsschalter, näherungssensor]
+  - [kontaktör, contactor, schütz, schuetz]
+  - [röle, relay, relais]
+  - [sigorta, fuse, sicherung]
+  - [valf, valve, ventil]
+  - [kontrol ünitesi, kontrolör, controller]
+  - [resolver, rezolver]
+  - [plc, programlanabilir lojik kontrolör, programmable logic controller, sps]
+  - [hmi, operatör paneli, operatör panel, operator panel, bedienpanel, touch panel]
+  - [enkoder, encoder, drehgeber]
+  # G3l madde 2: açık tip eşlemesi (tip_dahil): grubun herhangi bir terimi aranınca o tipteki TÜM ürünler de sonuçtadır
+  # (adı başka biçimde yazılmış "SINAMICS G120C", "MICROMASTER" dahil; tip.yaml). Yalnız tip_dahil alanı olan gruplar.
+  # karsiliklar verilmeyen sözlük grubu liste grubu gibi çift yönlüdür.
+  - terimler: [frekans konvertörü, frekans konvertör, inverter, invertör, frequency converter, frequency inverter,
+               frekans çevirici, frekans dönüştürücü, frekans dönüştürücüsü]
+    tip_dahil: [frekans_konvertoru]
+# G3k madde 4: tip kısıtlı TEK YÖNLÜ gruplar. "terimler"den biri sorguda geçerse terimler + "karsiliklar" ile VEYA'lanır
+# ve bu terimle eşleşen ürünler yalnız "tipler"deki ürün tiplerinden (tip.yaml anahtarı) olur; "haric_tipler" verilirse
+# bu tipler dışlanır (fix 1 I-1: kara liste). Kısıt yalnız o terimle eşleşmeye uygulanır. Karşılıklar yazılınca
+# bu grup devreye girmez (Türkçe "sürücü" kısıtsız kalır). Çok kelimeli karşılık (servo sürücü) kelimeleri VE ile de
+# aranır (G3j inceleme M-6): "Servoumrichter" = servo VE sürücü, yalnız "sürücü" değil.
+  - terimler: [servoumrichter, servoverstärker, servoverstaerker, servoantrieb]
+    karsiliklar: [servo sürücü, servo drive, servo amplifier, servo amplifikatör]
+    tipler: [surucu]
+  - terimler: [antrieb]
+    karsiliklar: [sürücü, drive, servo drive, servo amplifier, servo amplifikatör, amplifikatör, amplifier]
+    tipler: [surucu, frekans_konvertoru]
+  - terimler: [frequenzumrichter, frequenz umrichter, umrichter]
+    karsiliklar: [frekans konvertörü, frekans konvertör, inverter, invertör, frequency converter, frequency inverter,
+                  frekans çevirici, frekans dönüştürücü]
+    tipler: [frekans_konvertoru]
+    tip_dahil: [frekans_konvertoru]
+  # G3m madde 16: Almanca "Roboter" -> robot, "Schaltschrank" -> pano / kabin / kontrol kabini (tek yönlü, tip kısıtsız)
+  - terimler: [roboter]
+    karsiliklar: [robot]
+  - terimler: [schaltschrank, schaltschraenke, schaltschränke]
+    karsiliklar: [pano, kabin, kontrol kabini]
+  - terimler: [steuerung]
+    karsiliklar: [kontrol ünitesi, kontrolör, controller, kumanda, plc, programlanabilir lojik kontrolör]
+    haric_tipler: [pnomatik, valf, sensor, kablo]

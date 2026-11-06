@@ -1,0 +1,148 @@
+# G3h madde 5: ürün tipi (faset "Ürün tipi" / "Product type" ve arama alakası). Ürün adından (TR), bulamazsa kategori
+# yolundan (yaprak kategoriden köke) türetilir; eşitleme her turda urun.tip sütununa yazar (app/katalog/indeks.py).
+# KURAL SIRASI ÖNEMLİDİR: ilk eşleşen tip kazanır ("SERVO MOTOR KABLOSU" -> kablo, "SERVO SÜRÜCÜ" -> sürücü,
+# "MOTOR KONTAKTÖRÜ" -> kontaktör, "ASENKRON MOTOR" -> AC motor; servo motor değil).
+# Anahtar sözcük yazımı: app.metin.normalize ile katlanır, harf/rakam dışı karakterler boşluk sayılır.
+#   "kablo*"       -> "kablo" ile BAŞLAYAN kelime (kablosu, kabloları)
+#   "fan"          -> yalnız tam kelime ("fanuc" eşleşmez)
+#   "servo motor*" -> art arda kelimeler; son kelime önek
+# Eşleşme yoksa "diger". Tip uydurulmaz: ad ve kategori dışında veri kullanılmaz.
+tipler:
+  # G3h yeniden inceleme N-1: Parker/Eurotherm "SSD Drives" sürücüleri "ssd" (disk) kuralından önce sürücüdür
+  - anahtar: surucu
+    tr: Sürücü / servo sürücü
+    en: Drive / servo drive
+    kelimeler: [ssd drive*, parker ssd*, eurotherm ssd*]
+  # anahtar: diger olan kural eşleşirse ürün "Diğer" sayılır (sonraki kuralların yanlış eşleşmesini önler)
+  - anahtar: diger
+    kelimeler: [fren direnc*, balanser*, hard drive*, hard disk*, harddisk*, ssd]
+  - anahtar: kablo
+    tr: Kablo / konnektör
+    en: Cable / connector
+    kelimeler: [kablo*, cable*, kabel*, konnektor*, connector*, fis, fisi, kablaj*, harness]
+  - anahtar: teach_pendant
+    tr: Teach pendant (el terminali)
+    en: Teach pendant
+    kelimeler: [teach pendant*, el terminal*, kcp, smartpad*, smart pad*, flexpendant*, flex pendant*,
+                programlama unite*, pendant*]
+  - anahtar: enkoder
+    tr: Enkoder / resolver
+    en: Encoder / resolver
+    kelimeler: [enkoder, enkoderi, enkoderler*, encoder, encoderi, encoderler*, resolver*, rezolver*, rdc,
+                dreh geber*, drehgeber*]
+  - anahtar: valf
+    tr: Valf / valf terminali
+    en: Valve / valve terminal
+    kelimeler: [valf*, valfi, valve*, ventil*, vana*, solenoid*, selenoid*]
+  # inceleme M-2: elektrikli silindir pnömatik değil
+  - anahtar: lineer
+    tr: Lineer kızak / rulman
+    en: Linear guide / bearing
+    kelimeler: [elektrikli silindir*, elektrikli kizak*]
+  - anahtar: pnomatik
+    tr: Pnömatik silindir / aktüatör
+    en: Pneumatic cylinder / actuator
+    kelimeler: [hava motor*, silindir*, piston*, aktuator*, actuator*, kelepce*, paralel tutucu*, merkezli tutucu*,
+                manyetik tutucu*, acisal tutucu*, gripper*, pnomatik*,
+                sartlandirici*, basinc regulator*, hava regulator*, filtre regulator*, hava dagitici*,
+                basinc yukseltici*, vakum*, ejektor*, dengeleme*]
+  - anahtar: frekans_konvertoru
+    tr: Frekans konvertörü / invertör
+    en: Frequency converter / inverter
+    kelimeler: [frekans konvertor*, frekans invertor*, frekans cevirici*, inverter*, invertor*, umrichter*,
+                frequency converter*, vfd, sinamics g*, micromaster*, hiz kontrol cihaz*]
+  - anahtar: surucu
+    tr: Sürücü / servo sürücü
+    en: Drive / servo drive
+    kelimeler: [surucu, surucusu, suruculer, suruculeri, servo surucu*, servo drive*, drive, drives, amplifier*,
+                amplifikator*, servo amplifikator*, movidrive*, movimot*, simodrive*, sinamics*, motor modul*, motor module*, ksd, ksp, ksd1*, ksp600*, yol verici*,
+                soft starter*, servo kontrol unite*]
+  - anahtar: guc_kaynagi
+    tr: Güç kaynağı
+    en: Power supply
+    kelimeler: [guc kaynag*, guc kaynak*, power supply*, netzteil*, psu, smps, guc besleme*, guc modulu, kps, kpp,
+                sitop*, guc unitesi]
+  - anahtar: servo_motor
+    tr: Servo motor
+    en: Servo motor
+    kelimeler: [servo motor*, servomotor*, servo motorlar*, eksen motor*, simotics s*, simotic s*, 1fk7*, 1ft7*,
+                indradyn*, msk0*, msk1*]
+  - anahtar: kontaktor_role
+    tr: Kontaktör / röle
+    en: Contactor / relay
+    kelimeler: [kontaktor*, contactor*, role, role soket*, roleler*, rolesi, rele, rele*, relay*, zamanlayici*, timer,
+                kontak blog*, yardimci kontak*]
+  - anahtar: sigorta_salter
+    tr: Sigorta / şalter
+    en: Fuse / circuit breaker
+    kelimeler: [sigorta*, salter*, devre kesici*, circuit breaker*, mcb, yuk ayirici*, motor koruma*, kesici*,
+                emniyet anahtar*, acil stop*, buton*, limit switch*, mekanik switch*]
+  - anahtar: reduktor
+    tr: Redüktör / dişli kutusu
+    en: Gearbox / reducer
+    kelimeler: [reduktor*, disli kutu*, gearbox*, getriebe*, sanziman*, planet disli*]
+  - anahtar: fan
+    tr: Fan / soğutma
+    en: Fan / cooling
+    kelimeler: [fan, fani, fanlar*, fan unite*, lufter*, sogutucu*, sogutma*, klima*]
+  - anahtar: motor
+    tr: Asenkron / AC motor
+    en: Induction / AC motor
+    kelimeler: [asenkron motor*, ac motor*, elektrik motor*, senkron motor*, motor, motoru, motorlar, motorlari,
+                motorlu, step motor*, dc motor*]
+  # inceleme M-2: "PLC KARTI" plc (kart kuralından önce)
+  - anahtar: plc
+    tr: PLC / I/O modülü
+    en: PLC / I/O module
+    kelimeler: [plc kart*]
+  - anahtar: kart
+    tr: Elektronik kart
+    en: Circuit board
+    kelimeler: [kart, karti, kartlar, kartlari, board*, pcb*, card, devre kart*, anakart*, bilgisayar unite*]
+  # inceleme M-2: robot denetleyicisi PLC/kontrolör kuralından önce
+  - anahtar: robot
+    tr: Robot / robot kontrol ünitesi
+    en: Robot / robot controller
+    kelimeler: [robot controller*, robot kontrol*, robot kontrolor*]
+  - anahtar: hmi
+    tr: HMI / operatör paneli
+    en: HMI / operator panel
+    kelimeler: [hmi, operator panel*, dokunmatik panel*, dokunmatik ekran*, touch panel*, mobil panel*,
+                comfort panel*, basic panel*, panel pc*, endustriyel ekran*, endustriyel monitor*, monitor*, ekran,
+                ekrani]
+  - anahtar: plc
+    tr: PLC / I/O modülü
+    en: PLC / I/O module
+    kelimeler: [plc, cpu*, islemci*, s7, i o, io modul*, giris cikis*, dijital giris*, dijital cikis*, analog giris*,
+                analog cikis*, sinyal modul*, genisletme modul*, et200*, et 200*, simatic*, profibus*, profinet*,
+                iletisim modul*, haberlesme modul*, gateway*, klemens*, terminal modul*, bus modul*, ethernet switch*,
+                kontrolor*, controller*]
+  - anahtar: sensor
+    tr: Sensör
+    en: Sensor
+    kelimeler: [sensor*, sensoru, isik bariyer*, isik perde*, fotosel*, yakinlik*, algilayici*, barkod*,
+                kamera*, camera*, lazer olcum*, mesafe olcer*, manometre*, termostat*, okuyucu*]
+  - anahtar: filtre
+    tr: Filtre
+    en: Filter
+    kelimeler: [filtre*, filter*, emc, emi]
+  - anahtar: aku_pil
+    tr: Akü / pil
+    en: Battery
+    kelimeler: [aku, akusu, akuler*, pil, pili, piller*, battery*, batterie*, batarya*]
+  - anahtar: transformator
+    tr: Transformatör / reaktör
+    en: Transformer / reactor
+    kelimeler: [transformator*, trafo*, reaktor*, reactor*, transformer*, bobin*]
+  - anahtar: lineer
+    tr: Lineer kızak / rulman
+    en: Linear guide / bearing
+    kelimeler: [kizak*, rulman*, ray blog*, lineer*, linear*, bilyali*, burc*, mil, miller*]
+  - anahtar: robot
+    tr: Robot / robot kontrol ünitesi
+    en: Robot / robot controller
+    kelimeler: [robot, robotlar, robotu, endustriyel robot*, robot pano*, krc1, krc2, krc4, krc5,
+                kr c1, kr c2, kr c4, kr c5, irc5, irc 5, s4]
+diger:
+  tr: Diğer
+  en: Other

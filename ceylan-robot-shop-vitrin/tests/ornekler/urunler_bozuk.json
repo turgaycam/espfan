@@ -1,0 +1,13 @@
+{"data": [
+  {"sku": "B0001", "name": "Kategorisi null", "attributes": {"vatRate": 20},
+   "categoryId": null, "images": [], "price": {"amount": 0, "currency": "EUR"}, "stock": 1},
+  {"sku": "B0002", "name": "Fiyat alanı yok", "attributes": {"vatRate": 20},
+   "categoryId": {"_id": "6a26d4fcd01723cd75a4fcbd", "name": "ROLELER/ZAMANLAYICILAR", "path": "10.18.75"},
+   "images": [], "stock": 1},
+  {"sku": "", "name": "SKU boş", "attributes": {"vatRate": 20},
+   "categoryId": {"_id": "6a26d4fcd01723cd75a4fcbd", "name": "ROLELER/ZAMANLAYICILAR", "path": "10.18.75"},
+   "images": [], "price": {"amount": 0, "currency": "EUR"}, "stock": 1},
+  {"sku": "8102030100019", "name": "SIEMENS SIRIUS İZLEME RÖLESİ", "attributes": {"manufacturerCode": "3UG4512-1BR20", "vatRate": 20},
+   "categoryId": {"_id": "6a26d4fcd01723cd75a4fcbd", "name": "ROLELER/ZAMANLAYICILAR", "path": "10.18.75"},
+   "images": [], "price": {"amount": 0, "currency": "EUR"}, "stock": 1, "updatedAt": "2026-10-12T17:40:02.577Z"}
+], "total": 4, "page": 1, "limit": 20, "totalPages": 1}

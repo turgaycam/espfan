@@ -1,0 +1,25 @@
+{% extends "yasal/_taban.html" %}
+{% block baslik %}Künye{% endblock %}
+{% block metin %}
+<h1>Künye</h1>
+<p class="yasal-ozet">6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun m.3 ve Elektronik Ticarette Hizmet Sağlayıcı ve Aracı Hizmet Sağlayıcılar Hakkında Yönetmelik uyarınca hizmet sağlayıcı bilgileri.</p>
+
+<h2>Hizmet sağlayıcı</h2>
+<dl class="kunye">
+  <dt>Ticaret unvanı</dt><dd>{{ satici_unvan }}</dd>
+  <dt>Marka</dt><dd>Ceylan Robot</dd>
+  <dt>Merkez adresi</dt><dd>K.O.S.B. 3. Sk., No: 7, 42250 Selçuklu / Konya</dd>
+</dl>
+{# G3e madde 21: henüz doldurulmamış sicil/vergi/kayıt alanları listelenmez; tek satır not #}
+<p class="kunye-not" data-e2e="kunye-demo-notu">Demo: üretimde doldurulacak.</p>
+
+<h2>İletişim</h2>
+<dl class="kunye">
+  {% if telefon %}<dt>Telefon</dt><dd><a href="tel:{{ telefon_tel }}">{{ telefon }}</a></dd>{% endif %}
+  {% if iletisim_eposta %}<dt>E-posta</dt><dd data-e2e="kunye-eposta"><a href="mailto:{{ iletisim_eposta }}">{{ iletisim_eposta }}</a></dd>{% endif %}
+  <dt>Çalışma saatleri</dt><dd>Hafta içi 08:30–18:00 (TSİ, UTC+3) – temsili</dd>
+</dl>
+
+<h2>Açıklama</h2>
+<p>Bu demo sitede şirketin sicil, vergi ve kayıt bilgileri gösterilmez; gerçek site yayına alınmadan önce şirket kayıtlarından eklenecektir. Yasal metinler: <a href="/tr/yasal/kvkk">KVKK Aydınlatma Metni</a>, <a href="/tr/yasal/cerez">Çerez Politikası</a>, <a href="/tr/yasal/kullanim">Kullanım ve Satış Koşulları</a>.</p>
+{% endblock %}

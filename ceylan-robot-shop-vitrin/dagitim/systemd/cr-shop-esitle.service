@@ -1,0 +1,28 @@
+[Unit]
+Description=cr-shop-demo katalog eşitlemesi (ceylanrobot.com public API, salt okuma)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=crshop
+Group=crshop
+EnvironmentFile=/opt/cr-shop-demo/ortam
+Environment=PYTHONDONTWRITEBYTECODE=1
+WorkingDirectory=/opt/cr-shop-demo/current
+ExecStart=/opt/cr-shop-demo/current/venv/bin/python -m betikler.esitle
+MemoryMax=400M
+TimeoutStartSec=30min
+Nice=10
+UMask=0027
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/cr-shop-demo/veri /opt/cr-shop-demo/yedek
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true

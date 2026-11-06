@@ -1,0 +1,190 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import fiyat, ikon, guven_notu, garanti_ozeti, iade_satirlari, karsilastir_dugmesi, karsilastir_git, yerel_bildirim with context %}
+{% block baslik %}{{ urun_metin(urun.id, urun.ad) }}{% endblock %}
+{% block icerik %}
+<nav class="iz" aria-label="{{ t('katalog.iz') }}">
+  <ol>
+    {# G3b: dar ekranda yalnız bir üst düzey (iz-ust) "‹ <ad>" olarak tek satırda görünür #}
+    <li{% if not yol %} class="iz-ust"{% endif %}><a href="/{{ dil }}/">{{ t('genel.ana_sayfa') }}</a></li>
+    {% for k in yol %}<li{% if loop.last %} class="iz-ust"{% endif %}><a href="/{{ dil }}/kategori/{{ k.id }}">{{ kat_ad(k.ad) }}</a></li>{% endfor %}
+    <li><span aria-current="page">{{ urun_ad(urun.id, urun.ad) }}</span></li>
+  </ol>
+</nav>
+
+<article class="urun-detay" id="urun-{{ urun.id }}">
+  {% set g_adres = gorsel_adresi(urun, 'b') %}
+  <div class="urun-gorsel">
+    <img src="{{ g_adres }}" data-yedek="{{ yer_tutucu(urun.kok_kategori_ad) }}" alt="{{ urun_metin(urun.id, urun.ad) }} – {{ urun.sku }}{% if yer_tutucu_mu(g_adres) %} ({{ t('urun.temsili_alt') }}){% endif %}" width="400" height="300">
+    <p class="temsili-gorsel" data-temsili{% if not yer_tutucu_mu(g_adres) %} hidden{% endif %}>{{ t('urun.temsili_gorsel') }}</p>
+  </div>
+
+  <div class="urun-bilgi">
+    {# K22 karar bloğu sırası: ad → parça no (+ kopyala) → üretici kodu → durum → fiyat → stok → adet + eylem #}
+    {#- G3g madde 21: dar ekranda 96 px küçük görsel başlığın yanında ilk ekranda (büyük görsel aşağıda; aynı adres) #}
+    <div class="urun-baslik">
+      <img class="urun-kucuk-gorsel" src="{{ g_adres }}" data-yedek="{{ yer_tutucu(urun.kok_kategori_ad) }}" alt="" width="96" height="72">
+      <h1>{{ urun_ad(urun.id, urun.ad) }}</h1>
+    </div>
+    <dl class="urun-kodlar">
+      {#- G3e madde 10: etiketteki üretici kodu büyük "Parça no"; iç kod küçük "Stok kodu" #}
+      {% set parca_no = urun.uretici_kodu or urun.sku %}
+      <div>
+        <dt>{{ t('urun.parca_no') }}</dt>
+        <dd><span class="parca-no">{{ parca_no }}</span> <button type="button" class="kopyala" data-kopyala="{{ parca_no }}" data-kopyalandi="{{ t('genel.kopyalandi') }}" hidden>{{ ikon('kopyala') }}<span class="kopyala-etiket">{{ t('genel.kopyala') }}</span></button></dd>
+      </div>
+      {% if urun.uretici_kodu %}
+      <div class="stok-kodu-satiri">
+        <dt>{{ t('urun.stok_kodu') }}</dt>
+        <dd><span class="parca-no stok-kodu">{{ urun.sku }}</span></dd>
+      </div>
+      {% endif %}
+    </dl>
+    {#- G3j madde 17: aynı üretici koduna sahip başka aktif ürünler (ayırt etmek için durum ve stok kodu) #}
+    {% if ayni_parca_nolu %}<p class="ayni-parca-no" data-e2e="ayni-parca-no">{{ ikon('bilgi', 'ikon-16') }} {{ t('urun.ayni_parca_no', n=ayni_parca_nolu | length) }} {% for d in ayni_parca_nolu %}<a href="/{{ dil }}/urun/{{ d.id }}">{{ urun_ad(d.id, d.ad) }}</a> ({{ t('durum.' ~ d.durum_kodu) }}, {{ t('urun.ayni_parca_stok_kodu', sku=d.sku) }}){% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+    {% if urun.durum_kodu != 'belirtilmemis' %}
+    {#- G3i madde 11: "örnek" rozetinin anlamı title'da ve durum satırının yanında #}
+    <p class="urun-durum"><span class="rozet rozet-durum"{{ durum_title(urun.durum_kodu) }}>{{ t('durum.' ~ urun.durum_kodu) }}</span>{% if urun.durum_ornek %} <span class="rozet rozet-ornek" title="{{ t('urun.ornek_aciklama') }}">{{ t('urun.ornek') }}</span> <span class="ornek-aciklama">{{ t('urun.ornek_aciklama') }}</span>{% endif %}</p>
+    {% else %}
+    <p class="urun-durum"><span class="rozet rozet-notr" data-e2e="durum-teyit">{{ t('urun.durum_teyit') }}</span> <span class="durum-ipucu">{{ t('urun.durum_teyit_ipucu') }}</span></p>
+    {% endif %}
+    {#- G3g madde 14: duruma göre tek satır garanti özeti; garanti sayfasındaki tanıma bağlantı #}
+    <p class="garanti-ozeti" data-e2e="garanti-ozeti">{{ ikon('kalkan', 'ikon-16') }}<span>{{ garanti_ozeti(urun) }}</span></p>
+
+    {% if urun.teklif_zorunlu %}
+    <div class="fiyat-blok fiyat-teklif"><p class="fiyat-teklif-metin">{{ t('urun.fiyat_teklifle_kdv' if urun.kdv_gecersiz else 'urun.fiyat_teklifle') }}</p></div>
+    {% else %}
+    {{ fiyat(urun, fiyat_goster(urun), kdv_satiri=true) }}
+    {% endif %}
+    {% if not ulke %}<p class="bilgi-kutu ulke-sec-ipucu" data-e2e="ulke-sec-ipucu">{{ ikon('dunya') }}<span>{{ t('urun.ulke_sec_ipucu') }}</span></p>{% endif %}
+
+    {#- G3e düzeltme 3: stok = ayrılabilir adet (açık siparişlerin ayırdığı düşülür); tümü ayrılmışsa teklif yolu #}
+    {% set ayrilmis = tumu_ayrilmis(urun) %}
+    {% if ayrilmis %}
+      <p class="stok-not stok-ayrilmis" data-e2e="teslim-suresi">{{ ikon('uyari') }}<span>{{ ayrilmis_metni(urun) }}</span></p>
+    {% elif urun.stok > 0 %}
+      <p class="stok-not">{{ ikon('kontrol') }}<span>{{ t('urun.stokta', adet=musait(urun)) }}</span></p>
+      <p class="teslim-not" data-e2e="teslim-suresi">{{ ikon('kamyon') }}<span>{{ teslim_notu(urun) }}</span></p>
+    {% else %}
+      <p class="stok-not stok-yok" data-e2e="teslim-suresi">{{ ikon('kamyon') }}<span>{{ teslim_notu(urun) }}</span></p>
+    {% endif %}
+
+    {% if urun.teklif_zorunlu or ayrilmis %}
+      <div class="teklif-eylem">
+        <p>{{ ikon('bilgi') }}<span>{{ t('urun.ayrilmis_aciklama' if ayrilmis else 'urun.teklif_aciklama') }}</span></p>
+        <a class="dugme dugme-buyuk" href="/{{ dil }}/teklif?urun_id={{ urun.id }}" data-e2e="teklif-iste">{{ t('urun.teklif_iste') }}</a>
+      </div>
+    {% else %}
+      {#- Son inceleme I-1: sepetteki kalıp; tarayıcı doğrulaması (number/min/max/required) gönderimi sessizce engellemez #}
+      <form class="sepet-form" method="post" action="/{{ dil }}/sepet/ekle" novalidate>
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="urun_id" value="{{ urun.id }}">
+        <input type="hidden" name="sonraki" value="{{ istek_yolu }}">
+        <div class="alan">
+          <label for="adet">{{ t('urun.adet') }}</label>
+          <input id="adet" name="adet" type="text" value="1" inputmode="numeric" maxlength="6" autocomplete="off">
+        </div>
+        <button class="dugme dugme-buyuk" type="submit" data-e2e="sepete-ekle">{{ ikon('sepet') }}{{ t('urun.sepete_ekle') }}</button>
+      </form>
+      {#- G3n madde 11: fiyatlı üründe de teklif yolu (ikincil); form parça no + ürünle önceden dolu (urun_id) #}
+      <p class="teklif-ikincil"><a class="dugme ikincil" href="/{{ dil }}/teklif?urun_id={{ urun.id }}" data-e2e="teklif-iste-ikincil">{{ ikon('dosya', 'ikon-16') }}{{ t('urun.teklif_iste') }}</a></p>
+      {#- G3i madde 12: durumu belirtilmemiş ürünün satın alma kutusunda teyit ve ücretsiz iptal güvencesi (temsili;
+         docs/hukuk-notlari.md) #}
+      {#- G3m madde 7: kurumsal / yurt dışı / misafir görünümde güvence ticari iade satırıyla tek cümle (aşağıda) #}
+      {% if urun.durum_kodu == 'belirtilmemis' and iade_kipi == 'bireysel' %}<p class="durum-guvence" data-e2e="durum-guvence">{{ ikon('kalkan', 'ikon-16') }}<span>{{ t('urun.durum_guvence') }}</span></p>{% endif %}
+    {% endif %}
+    {{ yerel_bildirim(urun.id) }}
+
+    {{ karsilastir_dugmesi(urun) }}
+    {{ karsilastir_git() }}
+    {#- G3i madde 13: iade özeti müşteri tipine göre (bireysel: mevcut; kurumsal / yurt dışı: ticari alım kuralları,
+       sayı İade sayfası B ile aynı sabitten; misafir: iki satır) #}
+    {#- G3l madde 18: "olduğu gibi" üründe ticari iade özeti garantiye dayanmaz (yasal sayfa: iade edilmeyen ürün) #}
+    {#- G3m madde 7-8: belirtilmemiş durumda ticari satır ücretsiz iptal istisnasını içerir; olduğu gibi aynı kalıpta #}
+    {#- G3n madde 5: kart ve karşılaştırmayla aynı yardımcı (iade_satirlari) #}
+    <p class="garanti-satiri" data-e2e="garanti-satiri">{{ ikon('kalkan') }}{{ iade_satirlari(urun) }}</p>
+    <p class="maliyet-satiri">{{ ikon('kamyon' if kdv_var or not ulke else 'dunya') }}<span>
+    {#- G3m madde 6: kargo / navlun cümlesi sepet ve ödemeyle aynı anahtardan (kargo.tr, kargo.navlun) #}
+    {%- if urun.teklif_zorunlu %}{{ t('urun.maliyet_teklif') }}
+    {%- elif ulke == 'TR' %}{{ t('kargo.tr') }}
+    {%- elif kdv_var or not ulke %}{{ t('urun.maliyet_satiri') }}
+    {%- else %}{{ t('urun.maliyet_ihracat') }} · {{ t('kargo.navlun') }}{% endif -%}
+    </span></p>
+    {% if ulke and not kdv_var %}{% include "_ihracat_kdv.html" %}{% endif %}
+    <p class="guven-satiri">{{ ikon('kalkan') }}<span><a href="/{{ dil }}/yasal/garanti">{{ t('urun.garanti_bag') }}</a> · <a href="/{{ dil }}/yasal/iade">{{ t('urun.iade_bag') }}</a> · <a href="/{{ dil }}/yasal/kullanim#ihracat-export">{{ t('urun.ihracat_bag') }}</a></span></p>
+  </div>
+</article>
+
+<div class="urun-ek">
+  {% if aciklama %}
+  <details class="bolum urun-aciklama" open>
+    <summary>{{ t('urun.aciklama') }}</summary>
+    {% if aciklama.taslak %}<p class="urun-aciklama-rozet"><span class="rozet rozet-taslak" data-e2e="aciklama-taslak">{{ t('urun.aciklama_taslak') }}</span></p>{% endif %}
+    <p class="urun-aciklama-metin">{{ aciklama.metin }}</p>
+  </details>
+  {% elif aciklama_bilinen %}
+  {#- G3i madde 14: teknik verisi ve kaynak açıklaması olmayan üründe şablon taslak gösterilmez (kayıt silinmez); olgusal blok #}
+  <details class="bolum urun-aciklama" open>
+    <summary>{{ t('urun.aciklama') }}</summary>
+    <div class="aciklama-bilinen" data-e2e="aciklama-bilinen">
+      <p>{{ t('urun.aciklama_bilinen') }} <a href="/{{ dil }}/teklif?urun_id={{ urun.id }}">{{ t('urun.teknik_foy_bag') }}</a></p>
+      <dl class="ozellik">
+        <dt>{{ t('karsilastir.marka') }}</dt><dd>{{ aciklama_bilinen.marka or '—' }}</dd>
+        <dt>{{ t('urun.parca_no') }}</dt><dd class="parca-no">{{ urun.uretici_kodu or urun.sku }}</dd>
+        <dt>{{ t('urun.kategori') }}</dt><dd>{% if yol %}{% for k in yol %}{{ kat_ad(k.ad) }}{% if not loop.last %} › {% endif %}{% endfor %}{% else %}—{% endif %}</dd>
+        <dt>{{ t('karsilastir.durum') }}</dt><dd>{{ t('durum.' ~ urun.durum_kodu) }}</dd>
+      </dl>
+    </div>
+  </details>
+  {% endif %}
+  <details class="bolum" open>
+    <summary id="teknik-baslik">{{ t('urun.teknik_baslik') }}</summary>
+    {#- G3n madde 12: başlık bir kez (gizli caption yerine summary'ye aria-labelledby); parça no ile aynı "Type" yok #}
+    {% if teknik_satirlari %}
+    {# G3c madde 23: kaynak veriler Türkçedir; EN arayüzde lang="tr" ile işaretlenir. G3f: geçerli EN çeviri varsa
+       (teknik_en) EN satırlar gösterilir, işaretsiz #}
+    {#- G3l madde 19: çevrilmemiş tablonun ÜSTÜNDE tek not (başlık); altındaki ayrı dil notu yok #}
+    {% if dil != 'tr' and not teknik_en %}<h3 class="teknik-tablo-baslik" data-e2e="teknik-cevrilmemis">{{ t('urun.teknik_cevrilmemis_baslik') }}</h3>{% endif %}
+    <table class="teknik-tablo" data-e2e="teknik-tablo" aria-labelledby="teknik-baslik"{% if dil != 'tr' and not teknik_en %} lang="tr"{% endif %}>
+      <tbody>
+        {% for etiket, deger in teknik_satirlari %}<tr><th scope="row">{{ etiket }}</th><td>{{ deger }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    {#- G3m madde 10: kaynak cümlesi teknik tablonun notudur (tablonun hemen altında; tedarikçi notu kutusunun dışında) #}
+    <p class="alan-ipucu teknik-kaynak-notu">{{ t('urun.teknik_kaynak') }}</p>
+    {% if teknik_en and teknik_ceviri_taslak %}<p class="alan-ipucu teknik-ceviri-notu" data-e2e="teknik-ceviri-notu">{{ t('urun.teknik_makine_cevirisi') }}</p>{% endif %}
+    {% endif %}
+    {% if teknik %}
+    {#- G3k madde 20: kaynak açıklama bölümlerinin geçerli çevirisi yok: /en'de görünür metin olarak basılmaz; kapalı
+       <details> içinde Türkçe (lang="tr"). Makine çevirisi notu yalnız teknik tabloya aittir (tablonun hemen altında). #}
+    {% if dil != 'tr' and teknik.bolumler %}
+    <details class="kaynak-not" data-e2e="kaynak-not">
+      <summary>{{ t('urun.kaynak_not_ozet') }}</summary>
+      <div lang="tr">
+      {% for baslik, metin in teknik_bolumleri %}
+      {% if baslik %}<h3 class="teknik-bolum-baslik">{{ baslik }}</h3>{% endif %}
+      <p class="teknik-bolum-metin">{{ metin }}</p>
+      {% endfor %}
+      </div>
+    </details>
+    {% else %}
+    {#- Fix 1 (m-2): bölüm başlığı summary ile aynıysa (Türkçe katlanmış karşılaştırma) rotada boşaltılır #}
+    {% for baslik, metin in teknik_bolumleri %}
+    {% if baslik %}<h3 class="teknik-bolum-baslik">{{ baslik }}</h3>{% endif %}
+    <p class="teknik-bolum-metin">{{ metin }}</p>
+    {% endfor %}
+    {% endif %}
+    {% endif %}
+    {#- G3n madde 12: parça no / stok kodu (başlıkta) ve kategori (yol izinde) bu bölümde tekrarlanmaz #}
+    {#- Fix 1 (m-3): gösterilecek satır ve bölüm yoksa (ör. yalnız parça no'yu tekrarlayan "Type") föy bağlantısı #}
+    {% if not teknik_satirlari and not teknik_bolumleri %}<p class="teknik-foy">{{ ikon('dosya') }}<span>{{ t('urun.teknik_foy') }} <a href="/{{ dil }}/teklif?urun_id={{ urun.id }}">{{ t('urun.teknik_foy_bag') }}</a></span></p>{% endif %}
+  </details>
+
+  <details class="bolum">
+    <summary>{{ t('urun.teslim_baslik') }}</summary>
+    <p>{{ t('urun.maliyet_teklif' if urun.teklif_zorunlu else ('urun.teslim_ozet' if kdv_var or not ulke else 'urun.teslim_ozet_ihracat')) }}</p>
+    {#- Fix 1 (m-1): özet de iade satırlarıyla aynı durum × kip yardımcısından (baglam.iade_ozet_anahtarlari) #}
+    <p>{{ iade_ozet_metni(urun) }}</p>
+    <p><a href="/{{ dil }}/yasal/iade">{{ t('urun.iade_bag') }}</a> · <a href="/{{ dil }}/yasal/garanti">{{ t('urun.garanti_bag') }}</a></p>
+  </details>
+</div>
+{% endblock %}

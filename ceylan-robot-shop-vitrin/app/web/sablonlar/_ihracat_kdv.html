@@ -1,0 +1,5 @@
+{% from "_makrolar.html" import ikon with context %}
+{# G3e madde 12: TR dışı teslimde ihracat KDV satırı (docs/hukuk-notlari.md ile uyumlu; "reverse charge" denmez:
+   AB içi işlem değildir). Ayrıntı: Kullanım ve Satış Koşulları B bölümü. G3m madde 25: tüm ihracat bağlantıları aynı
+   çapaya (#ihracat-export, B bölümünün başı). #}
+<p class="not ihracat-kdv" data-e2e="ihracat-kdv">{{ ikon('dunya', 'ikon-16') }}<span>{{ t('ihracat.kdv_metni_fabrika' if ihracat_fabrika else 'ihracat.kdv_metni') }} <a href="/{{ dil }}/yasal/kullanim#ihracat-export">{{ t('ihracat.ayrinti') }}</a></span></p>

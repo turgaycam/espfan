@@ -1,0 +1,52 @@
+{% extends "taban.html" %}
+{% from "_makrolar.html" import ikon, parca_kodlari with context %}
+{% block baslik %}{{ t('odeme.adim_odeme') }}{% endblock %}
+{% block icerik %}
+<section class="kart-odeme">
+  {% include "_adimlar.html" %}
+  <h1>{{ t('odeme.adim_odeme') }} <span class="baslik-ek">· {{ t('kart.baslik') }}</span></h1>
+  <div class="odeme-duzen">
+    <div class="odeme-ana">
+      <aside class="bilgi-kutu test-kartlari" aria-labelledby="test-kartlari-baslik">
+        <p class="test-kartlari-uyari" role="note">{{ ikon('bilgi') }} <strong>{{ t('kart.demo_uyari') }}</strong></p>
+        <h2 id="test-kartlari-baslik">{{ t('kart.test_kartlari') }}</h2>
+        <ul>
+          {% for numara, anahtar in test_kartlari %}<li><code class="kart-numarasi">{{ numara }}</code> — {{ t(anahtar) }}</li>{% endfor %}
+          <li>{{ t('kart.test_sms', kod=sms_kodu) }}</li>
+        </ul>
+      </aside>
+      {% if hata_kodu %}<div class="form-hata-ozet" role="alert" id="kart-hata" data-e2e="odeme-hata" data-kod="{{ hata_kodu }}">{{ t('hata_kodu.' ~ hata_kodu) }}</div>{% endif %}
+      <form class="form kart-formu" method="post" action="/{{ dil }}/odeme/{{ siparis.no }}/kart" autocomplete="off" data-tek-gonderim>
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="islem_anahtari" value="{{ islem_anahtari }}">
+        <div class="alan{% if hata_kodu == 'gecersiz_kart' %} hatali{% endif %}">
+          <label for="kart_no">{{ t('kart.kart_no') }}</label>
+          <input id="kart_no" name="kart_no" type="text" inputmode="numeric" autocomplete="off" maxlength="23" required{% if hata_kodu %} aria-invalid="true" aria-describedby="kart-hata"{% endif %}>
+        </div>
+        <div class="alan-cifti">
+          <div class="alan">
+            <label for="kart_skt">{{ t('kart.son_kullanma') }}</label>
+            <input id="kart_skt" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="{{ t('kart.skt_ornek') }}" aria-describedby="kart-skt-cvc-notu">
+          </div>
+          <div class="alan">
+            <label for="kart_cvc">{{ t('kart.cvc') }}</label>
+            <input id="kart_cvc" type="password" inputmode="numeric" autocomplete="off" maxlength="4" aria-describedby="kart-skt-cvc-notu">
+          </div>
+        </div>
+        <p class="alan-ipucu" id="kart-skt-cvc-notu">{{ t('kart.skt_cvc_notu') }}</p>
+        <button type="submit" class="dugme dugme-buyuk dugme-tam" data-e2e="kart-gonder">{{ ikon('kalkan', 'ikon-16') }} {{ t('kart.ode_mal' if siparis.teslim_yontemi == 'yurtdisi_dap' else 'kart.ode') }} · {{ para(siparis.toplam, siparis.para_birimi) }}</button>
+        <p class="not">{{ t('kart.sure_notu') }}</p>
+      </form>
+    </div>
+    <aside class="siparis-ozeti" aria-labelledby="ozet-baslik">
+      <h2 id="ozet-baslik">{{ t('odeme.ozet') }}</h2>
+      <p class="ozet-no">{{ t('kart.siparis', no=siparis.no) }}</p>
+      {% include "_fatura_bilgisi.html" %}
+      <ul class="ozet-kalemleri">
+        {% for k in siparis.kalemler %}{% set u = urunler.get(k.urun_id) %}<li><span class="ozet-kalem-ad">{{ k.adet }} × {{ urun_ad(k.urun_id, k.ad) }}<span class="kalem-kodlar">{% if u %}{{ parca_kodlari(u) }}{% else %}<span class="parca-no">{{ k.sku }}</span>{% endif %}</span></span></li>{% endfor %}
+      </ul>
+      {% include "_siparis_tutar.html" %}
+    </aside>
+  </div>
+</section>
+{% endblock %}

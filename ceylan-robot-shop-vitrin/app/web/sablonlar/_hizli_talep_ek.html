@@ -1,0 +1,24 @@
+{#- G3i madde 16: hızlı talepte isteğe bağlı aciliyet (varsayılan yok), adet ve robot/kontrolör modeli. Değişkenler:
+   hizli_alanlar / hizli_hatalar (yalnız hatalı gönderim sayfasında; diğer formlarda boş). #}
+{%- set hz = hizli_alanlar if hizli_alanlar is defined else {} %}
+{%- set hh = hizli_hatalar if hizli_hatalar is defined else {} %}
+{#- G3k madde 11: acil talepte telefon şartı önceden (iletişim alanının hemen altında); radyolar ortak sınıfla aynı boyda;
+   model alanı tam genişlik; form altında KVKK aydınlatma bilgisi (onay kutusu yok, alan adları aynı) #}
+<p class="alan-ipucu acil-telefon-ipucu" id="ht-iletisim-ipucu">{{ t('teklif.acil_telefon_ipucu') }}</p>
+<fieldset class="aciliyet{% if hh.get('aciliyet') %} hatali{% endif %}">
+  <legend>{{ t('teklif.aciliyet') }}</legend>
+  {% for d in ('acil', 'bu_hafta', 'planli') %}<label class="secim aciliyet-secenek"><input type="radio" id="ht-aciliyet-{{ d }}" name="aciliyet" value="{{ d }}"{% if hz.get('aciliyet') == d %} checked{% endif %}> <span>{{ t('teklif.aciliyet_' ~ d) }}</span></label>
+  {% endfor %}
+  {% if hh.get('aciliyet') %}<p class="alan-hata" id="hata-aciliyet">{{ t(hh['aciliyet']) }}</p>{% endif %}
+</fieldset>
+<div class="alan{% if hh.get('adet') %} hatali{% endif %}">
+  <label for="ht-adet">{{ t('teklif.adet') }}</label>
+  <input id="ht-adet" name="adet" type="text" inputmode="numeric" maxlength="6" autocomplete="off" class="adet-alani" value="{{ hz.get('adet', '') }}"{% if hh.get('adet') %} aria-invalid="true" aria-describedby="hata-adet"{% endif %}>
+  {% if hh.get('adet') %}<p class="alan-hata" id="hata-adet">{{ t(hh['adet']) }}</p>{% endif %}
+</div>
+<div class="alan alan-tam{% if hh.get('model') %} hatali{% endif %}">
+  <label for="ht-model">{{ t('teklif.model') }}</label>
+  <input id="ht-model" name="model" maxlength="100" autocomplete="off" spellcheck="false" value="{{ hz.get('model', '') }}"{% if hh.get('model') %} aria-invalid="true" aria-describedby="hata-model"{% endif %}>
+  {% if hh.get('model') %}<p class="alan-hata" id="hata-model">{{ t(hh['model']) }}</p>{% endif %}
+</div>
+<p class="alan-ipucu kvkk-bilgi" data-e2e="hizli-kvkk-bilgi">{{ t('teklif.hizli_kvkk_bilgi') }} <a href="/{{ dil }}/yasal/kvkk">{{ t('teklif.kvkk_etiket') }}</a></p>
